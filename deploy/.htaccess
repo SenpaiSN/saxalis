@@ -1,0 +1,17 @@
+# Frontend SPA fallback for Apache (put this file in the root of your built site - e.g. in `dist/`)
+RewriteEngine On
+RewriteBase /
+# Serve existing files directly
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+# Otherwise rewrite to index.html (single page app)
+RewriteRule ^ /index.html [L]
+
+# Optional: set caching for static assets
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType text/css "access plus 1 week"
+  ExpiresByType application/javascript "access plus 1 week"
+  ExpiresByType image/* "access plus 1 month"
+</IfModule>

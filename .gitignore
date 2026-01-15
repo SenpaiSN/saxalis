@@ -1,0 +1,70 @@
+# Local API config (do not commit credentials)
+API/config.local.php
+
+# Variables d'environnement
+.env
+.env.local
+
+# Logs
+*.log
+API/*.log
+
+# Node deps
+node_modules/
+
+# build outputs
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup
+*.bak
+*~
+
+# Auto-generated entries
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Sensitive files (auto-detected)
+.env
+.env.local
+dist
+node_modules
+

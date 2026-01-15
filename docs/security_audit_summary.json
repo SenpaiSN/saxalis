@@ -1,0 +1,284 @@
+{
+  "audit_date": "2026-01-15",
+  "scope": "API/ directory - All PHP files",
+  "files_analyzed": 87,
+  "summary": {
+    "critical": 5,
+    "high": 8,
+    "medium": 12,
+    "low": 7,
+    "total": 32
+  },
+  "critical_vulnerabilities": [
+    {
+      "id": "CRIT-001",
+      "title": "Credentials en clair dans le code source",
+      "severity": "CRITICAL",
+      "files": ["API/config.php", "API/config.local.php"],
+      "lines": [59, 6],
+      "description": "Mot de passe de base de données exposé en clair",
+      "impact": "Accès complet à la base de données, vol de données utilisateurs",
+      "remediation": "Déplacer tous les credentials dans variables d'environnement (.env)",
+      "status": "open",
+      "priority": 1
+    },
+    {
+      "id": "CRIT-002",
+      "title": "Fichiers de log exposant des mots de passe",
+      "severity": "CRITICAL",
+      "files": ["API/login.log", "API/recurring_login.log", "API/login.php"],
+      "lines": [31],
+      "description": "Logs stockant mots de passe, emails, tokens en clair",
+      "impact": "Vol de credentials, violation RGPD, usurpation d'identité",
+      "remediation": "Supprimer tous les fichiers .log, ne jamais logger de credentials",
+      "status": "open",
+      "priority": 1
+    },
+    {
+      "id": "CRIT-003",
+      "title": "Absence de rate limiting sur authentification",
+      "severity": "CRITICAL",
+      "files": ["API/login.php", "API/register.php"],
+      "description": "Aucune limitation des tentatives de connexion",
+      "impact": "Attaques par force brute, compromission de comptes",
+      "remediation": "Implémenter rate limiting (5 tentatives max, blocage 15 min)",
+      "status": "open",
+      "priority": 1
+    },
+    {
+      "id": "CRIT-004",
+      "title": "Injection de commandes système",
+      "severity": "CRITICAL",
+      "files": ["API/export_ocr_feedback.php"],
+      "lines": [129],
+      "description": "Utilisation de exec() pour exécuter aws cli",
+      "impact": "Exécution de code arbitraire, accès serveur complet",
+      "remediation": "Remplacer par SDK PHP AWS (aws/aws-sdk-php)",
+      "status": "open",
+      "priority": 2
+    },
+    {
+      "id": "CRIT-005",
+      "title": "Absence de protection CSRF sur endpoints critiques",
+      "severity": "CRITICAL",
+      "files": [
+        "API/delete_all_transactions.php",
+        "API/update_password.php",
+        "API/update_user_profile.php",
+        "API/logout.php"
+      ],
+      "description": "Opérations destructives sans token CSRF",
+      "impact": "Suppression de données, modification non autorisée",
+      "remediation": "Ajouter verify_csrf_token() sur tous les endpoints POST/DELETE",
+      "status": "open",
+      "priority": 1
+    }
+  ],
+  "high_vulnerabilities": [
+    {
+      "id": "HIGH-001",
+      "title": "Politique CORS trop permissive",
+      "severity": "HIGH",
+      "files": ["API/config.php"],
+      "lines": [5, 22],
+      "description": "CORS accepte localhost avec n'importe quel port",
+      "remediation": "Whitelister uniquement ports nécessaires, séparer dev/prod"
+    },
+    {
+      "id": "HIGH-002",
+      "title": "Sessions sans options de sécurité",
+      "severity": "HIGH",
+      "files": ["tous les fichiers avec session_start()"],
+      "description": "Pas de HttpOnly, Secure, SameSite sur cookies de session",
+      "remediation": "Configurer session.cookie_httponly=1, secure=1, samesite=Strict"
+    },
+    {
+      "id": "HIGH-003",
+      "title": "Pas de validation de propriété sur ressources",
+      "severity": "HIGH",
+      "files": ["API/get_subcategories.php"],
+      "description": "Retourne toutes les sous-catégories sans filtrer par utilisateur",
+      "remediation": "Filtrer toutes requêtes par id_utilisateur"
+    },
+    {
+      "id": "HIGH-004",
+      "title": "Absence de validation de taille fichiers",
+      "severity": "HIGH",
+      "files": ["API/upload_avatar.php", "API/upload_invoice.php"],
+      "remediation": "Définir upload_max_filesize, valider avant move_uploaded_file"
+    },
+    {
+      "id": "HIGH-005",
+      "title": "Pas de protection directory traversal",
+      "severity": "HIGH",
+      "files": ["API/upload_helper.php"],
+      "lines": [34],
+      "remediation": "Utiliser realpath() pour valider chemin final"
+    },
+    {
+      "id": "HIGH-006",
+      "title": "Exposition de détails d'erreur via ?debug=1",
+      "severity": "HIGH",
+      "files": ["API/get_user.php", "API/upload_avatar.php", "API/test_db.php"],
+      "description": "Paramètre debug expose messages SQL et credentials",
+      "remediation": "Supprimer test_db.php, retirer mode debug via URL"
+    },
+    {
+      "id": "HIGH-007",
+      "title": "Absence de Content Security Policy",
+      "severity": "HIGH",
+      "files": ["tous"],
+      "remediation": "Ajouter headers CSP, X-Frame-Options, X-Content-Type-Options"
+    },
+    {
+      "id": "HIGH-008",
+      "title": "Validation email insuffisante",
+      "severity": "HIGH",
+      "files": ["API/register.php", "API/update_user_profile.php"],
+      "remediation": "Valider format strict, blacklister domaines jetables"
+    }
+  ],
+  "files_to_fix_immediately": [
+    {
+      "file": "API/config.php",
+      "priority": 1,
+      "issues": ["credentials en clair", "CORS permissif"],
+      "action": "Déplacer credentials vers .env, restreindre CORS"
+    },
+    {
+      "file": "API/config.local.php",
+      "priority": 1,
+      "issues": ["credentials en clair", "versionné dans git"],
+      "action": "Supprimer du git, ajouter à .gitignore, utiliser .env"
+    },
+    {
+      "file": "API/login.php",
+      "priority": 1,
+      "issues": ["logging mots de passe", "pas de rate limiting"],
+      "action": "Supprimer logging ligne 22-31, implémenter rate limiting"
+    },
+    {
+      "file": "API/login.log",
+      "priority": 1,
+      "issues": ["contient mots de passe en clair"],
+      "action": "SUPPRIMER IMMEDIATEMENT"
+    },
+    {
+      "file": "API/recurring_login.log",
+      "priority": 1,
+      "issues": ["logs sensibles"],
+      "action": "SUPPRIMER IMMEDIATEMENT"
+    },
+    {
+      "file": "API/delete_all_transactions.php",
+      "priority": 1,
+      "issues": ["pas de CSRF protection", "opération destructive"],
+      "action": "Ajouter verify_csrf_token(), confirmation utilisateur"
+    },
+    {
+      "file": "API/update_password.php",
+      "priority": 1,
+      "issues": ["pas de CSRF protection", "validation faible"],
+      "action": "Ajouter CSRF, valider force mot de passe"
+    },
+    {
+      "file": "API/test_db.php",
+      "priority": 1,
+      "issues": ["expose credentials et structure DB"],
+      "action": "SUPPRIMER EN PRODUCTION"
+    },
+    {
+      "file": "API/export_ocr_feedback.php",
+      "priority": 2,
+      "issues": ["injection commande via exec()"],
+      "action": "Remplacer exec() par SDK AWS"
+    },
+    {
+      "file": "API/upload_helper.php",
+      "priority": 2,
+      "issues": ["directory traversal", "validation MIME faible"],
+      "action": "Ajouter realpath validation, forcer finfo"
+    }
+  ],
+  "action_plan": {
+    "immediate": {
+      "timeframe": "24 heures",
+      "tasks": [
+        "Déplacer credentials dans .env",
+        "Supprimer tous fichiers .log",
+        "Ajouter *.log au .gitignore",
+        "Supprimer code logging mots de passe (login.php ligne 22-31)",
+        "Ajouter CSRF sur delete_all_transactions.php",
+        "Supprimer test_db.php"
+      ]
+    },
+    "short_term": {
+      "timeframe": "1 semaine",
+      "tasks": [
+        "Implémenter rate limiting sur login",
+        "Remplacer exec() par SDK AWS",
+        "Ajouter headers sécurité (CSP, X-Frame-Options)",
+        "Configurer sessions sécurisées",
+        "Valider force mots de passe",
+        "Activer HTTPS strict"
+      ]
+    },
+    "medium_term": {
+      "timeframe": "1 mois",
+      "tasks": [
+        "Implémenter pagination",
+        "Ajouter audit logging",
+        "Implémenter soft delete",
+        "Tests sécurité automatisés",
+        "Documentation API",
+        "Scan antivirus uploads"
+      ]
+    }
+  },
+  "security_score": {
+    "overall": 45,
+    "authentication": 30,
+    "authorization": 60,
+    "data_validation": 70,
+    "session_management": 40,
+    "cryptography": 80,
+    "error_handling": 35,
+    "logging": 20,
+    "configuration": 25
+  },
+  "compliance": {
+    "owasp_top_10": {
+      "A01_broken_access_control": "FAIL",
+      "A02_cryptographic_failures": "PARTIAL",
+      "A03_injection": "PASS",
+      "A04_insecure_design": "FAIL",
+      "A05_security_misconfiguration": "FAIL",
+      "A06_vulnerable_components": "UNKNOWN",
+      "A07_identification_failures": "FAIL",
+      "A08_software_integrity": "PARTIAL",
+      "A09_logging_failures": "FAIL",
+      "A10_ssrf": "PASS"
+    },
+    "gdpr": {
+      "data_minimization": "PARTIAL",
+      "right_to_erasure": "PARTIAL",
+      "data_breach_notification": "FAIL",
+      "security_measures": "FAIL",
+      "audit_trail": "FAIL"
+    }
+  },
+  "recommendations": {
+    "tools": [
+      "PHPStan - Analyse statique",
+      "OWASP ZAP - Scan vulnérabilités",
+      "Fail2ban - Protection brute force",
+      "Sentry - Monitoring erreurs",
+      "composer audit - Audit dépendances"
+    ],
+    "training": [
+      "OWASP Top 10 Training",
+      "Secure Coding in PHP",
+      "GDPR Compliance for Developers"
+    ]
+  }
+}

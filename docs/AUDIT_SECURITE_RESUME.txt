@@ -1,0 +1,313 @@
+================================================================================
+                    AUDIT DE SECURITE - SaXalis API
+                           Rapport du 15/01/2026
+================================================================================
+
+FICHIERS ANALYSES: 87 fichiers PHP dans le dossier API/
+
+--------------------------------------------------------------------------------
+VULNERABILITES TROUVEES
+--------------------------------------------------------------------------------
+
+CRITIQUE (5):
+  1. Mots de passe de base de données en clair dans config.php
+  2. Fichiers de log contenant mots de passe utilisateurs
+  3. Pas de protection contre attaques par force brute (login)
+  4. Injection de commandes système via exec() 
+  5. Opérations dangereuses sans protection CSRF
+
+ELEVEE (8):
+  6. Politique CORS trop permissive
+  7. Sessions sans options de sécurité
+  8. Pas de validation de propriété sur certaines ressources
+  9. Validation insuffisante taille fichiers uploadés
+ 10. Pas de protection directory traversal
+ 11. Exposition détails d'erreur via ?debug=1
+ 12. Absence de Content Security Policy
+ 13. Validation email insuffisante
+
+MOYENNE (12):
+ 14. Pas de limitation longueur Notes
+ 15. Validation MIME type insuffisante
+ 16. Pas de backup avant suppression massive
+ 17. Timezone handling inconsistant
+ 18. Pas de pagination sur listes
+ 19. Pas de vérification intégrité fichiers uploadés
+ 20. Variables d'environnement non validées
+ 21. Pas de logging des actions sensibles
+ 22. Pas de vérification force mot de passe
+ 23. Pas de vérification unicité email (update)
+ 24. Pas de nettoyage fichiers en cas d'erreur
+ 25. Utilisation du suppresseur @ d'erreurs
+
+FAIBLE (7):
+ 26. Commentaires de debug dans le code
+ 27. Headers de debug exposés
+ 28. Pas de vérification extension fichier uploadé
+ 29. Pas de vérification résolution image
+ 30. Pas de versioning API
+ 31. Absence de documentation endpoints
+ 32. Timing attacks potentiels
+
+TOTAL: 32 vulnérabilités
+
+--------------------------------------------------------------------------------
+SCORE DE SECURITE: 45/100 (INSUFFISANT)
+--------------------------------------------------------------------------------
+
+Authentification:      30/100  ⚠️  CRITIQUE
+Configuration:         25/100  ⚠️  CRITIQUE  
+Logging:               20/100  🚨  CRITIQUE
+Gestion erreurs:       35/100  ⚠️  FAIBLE
+Sessions:              40/100  ⚠️  MOYEN
+Autorisation:          60/100  ⚠️  MOYEN
+Validation données:    70/100  ✅  CORRECT
+Cryptographie:         80/100  ✅  BON
+
+--------------------------------------------------------------------------------
+FICHIERS LES PLUS PROBLEMATIQUES
+--------------------------------------------------------------------------------
+
+PRIORITE 1 (Corriger AUJOURD'HUI):
+  • config.php - Credentials en clair
+  • config.local.php - Credentials en clair, versionné dans git
+  • login.log - Contient mots de passe en clair
+  • login.php - Enregistre mots de passe dans logs
+  • delete_all_transactions.php - Pas de CSRF
+  • update_password.php - Pas de CSRF
+  • test_db.php - Expose structure base de données
+
+PRIORITE 2 (Corriger cette semaine):
+  • export_ocr_feedback.php - exec() dangereux
+  • upload_helper.php - Directory traversal
+  • register.php - Pas de rate limiting
+
+PRIORITE 3 (Corriger ce mois):
+  • get_transactions.php - Pas de pagination
+  • register.php - Validation mot de passe faible
+  • update_user_profile.php - Pas de vérification email unique
+
+--------------------------------------------------------------------------------
+POINTS POSITIFS (Ce qui est déjà bien fait)
+--------------------------------------------------------------------------------
+
+✅ Protection injection SQL - PDO avec requêtes préparées
+✅ Mots de passe hashés - password_hash() et password_verify()
+✅ Validation centralisée - Fichier security.php
+✅ Protection XSS - htmlspecialchars()
+✅ Authentification - require_auth() sur endpoints
+✅ Protection CSRF disponible - Juste pas utilisée partout
+✅ Régénération session - Après login
+
+BASE SOLIDE - Il faut juste corriger les points critiques!
+
+--------------------------------------------------------------------------------
+PLAN D'ACTION SIMPLIFIE
+--------------------------------------------------------------------------------
+
+AUJOURD'HUI (30-60 minutes):
+
+1. Supprimer tous les fichiers .log dans API/
+   → rm API/*.log
+
+2. Ajouter *.log, .env, config.local.php au .gitignore
+
+3. Créer fichier .env avec les credentials
+   
+4. Modifier config.php pour utiliser getenv() au lieu de credentials en dur
+
+5. Supprimer le code de logging dans login.php (lignes 22-31)
+
+6. Ajouter verify_csrf_token() dans:
+   - delete_all_transactions.php
+   - update_password.php  
+   - update_user_profile.php
+
+7. Supprimer test_db.php
+
+8. Configurer variables d'environnement sur le serveur (.htaccess)
+
+9. CHANGER le mot de passe de la base de données
+
+
+CETTE SEMAINE (2-3 heures):
+
+• Implémenter rate limiting sur login
+• Remplacer exec() par SDK AWS
+• Ajouter headers de sécurité (CSP, X-Frame-Options)
+• Configurer sessions sécurisées
+• Validation force des mots de passe
+
+
+CE MOIS (1 journée):
+
+• Ajouter pagination sur toutes les listes
+• Implémenter audit logging
+• Protection directory traversal
+• Tests de sécurité automatisés
+• Documentation API
+
+--------------------------------------------------------------------------------
+CONFORMITE AUX STANDARDS
+--------------------------------------------------------------------------------
+
+OWASP Top 10:
+  A01 - Broken Access Control          ❌ ECHEC
+  A02 - Cryptographic Failures          ⚠️  PARTIEL
+  A03 - Injection                       ✅ REUSSI
+  A04 - Insecure Design                 ❌ ECHEC
+  A05 - Security Misconfiguration       ❌ ECHEC
+  A07 - Identification Failures         ❌ ECHEC
+  A09 - Logging Failures                ❌ ECHEC
+
+RGPD:
+  Minimisation données                  ⚠️  PARTIEL
+  Droit à l'effacement                  ⚠️  PARTIEL
+  Notification fuite                    ❌ ECHEC
+  Mesures sécurité                      ❌ ECHEC
+  Traçabilité                           ❌ ECHEC
+
+--------------------------------------------------------------------------------
+OUTILS RECOMMANDES
+--------------------------------------------------------------------------------
+
+Analyse:
+  • PHPStan - Analyse statique code PHP
+  • OWASP ZAP - Scan vulnérabilités web
+  • Snyk - Monitoring dépendances
+
+Protection:
+  • Fail2ban - Protection brute force
+  • ModSecurity - Web Application Firewall
+  • Sentry - Monitoring erreurs
+
+--------------------------------------------------------------------------------
+IMPACT ET RISQUES ACTUELS
+--------------------------------------------------------------------------------
+
+🚨 RISQUES IMMEDIATS:
+
+• Vol de TOUS les mots de passe utilisateurs (via logs)
+• Accès complet base de données (credentials exposés)
+• Attaques par force brute illimitées
+• Suppression de données sans protection
+• Exécution de code sur le serveur
+
+💰 IMPACTS POTENTIELS:
+
+• Violation données personnelles → Amende RGPD jusqu'à 20M€
+• Perte de confiance utilisateurs
+• Arrêt du service nécessaire pour corriger
+• Responsabilité légale en cas de fuite
+
+⏰ URGENCE:
+
+Les 5 vulnérabilités critiques doivent être corrigées 
+IMMEDIATEMENT (dans les 24 heures).
+
+--------------------------------------------------------------------------------
+FICHIERS GENERES PAR L'AUDIT
+--------------------------------------------------------------------------------
+
+1. RESUME_AUDIT_SECURITE.md
+   → Vue d'ensemble complète en français simple
+
+2. RAPPORT_SECURITE.md
+   → Rapport détaillé technique complet
+
+3. ACTIONS_IMMEDIATES.md
+   → Guide pas-à-pas des corrections urgentes
+
+4. CHECKLIST_SECURITE.md
+   → Checklist de toutes les actions à faire
+
+5. security_audit_summary.json
+   → Format machine pour outils automatiques
+
+6. fix_security.sh
+   → Script bash pour automatiser certaines actions
+
+7. CE_FICHIER.txt
+   → Résumé rapide format texte
+
+--------------------------------------------------------------------------------
+PROCHAINES ETAPES
+--------------------------------------------------------------------------------
+
+1. LIRE: RESUME_AUDIT_SECURITE.md (vue d'ensemble)
+
+2. EXECUTER: fix_security.sh (actions automatisables)
+
+3. SUIVRE: ACTIONS_IMMEDIATES.md (corrections manuelles)
+
+4. VERIFIER: CHECKLIST_SECURITE.md (tout est corrigé)
+
+5. PLANIFIER: Actions semaine et mois
+
+6. TESTER: Vérifier que tout fonctionne
+
+7. MONITORER: Mettre en place surveillance continue
+
+--------------------------------------------------------------------------------
+QUESTIONS FREQUENTES
+--------------------------------------------------------------------------------
+
+Q: Mon application peut être piratée maintenant?
+R: OUI. Les 5 vulnérabilités critiques le permettent.
+
+Q: Combien de temps pour corriger?
+R: 30-60 min pour les critiques, 2-3h pour les prioritaires.
+
+Q: Est-ce que ça va casser mon application?
+R: NON, si vous suivez les instructions correctement.
+
+Q: Dois-je tout faire maintenant?
+R: Les 5 critiques OUI. Le reste peut être planifié.
+
+Q: Que faire si je suis bloqué?
+R: 1) Backup complet 2) Tester en dev 3) Suivre le guide pas-à-pas
+
+--------------------------------------------------------------------------------
+SUPPORT ET RESSOURCES
+--------------------------------------------------------------------------------
+
+Documentation:
+  • OWASP Top 10: https://owasp.org/www-project-top-ten/
+  • PHP Security: https://phptherightway.com/#security
+  • ANSSI: https://www.ssi.gouv.fr/
+
+Vérification:
+  • securityheaders.com - Tester vos headers
+  • observatory.mozilla.org - Scan sécurité
+  • ssllabs.com - Tester HTTPS/SSL
+
+Formation:
+  • OWASP Web Security Testing Guide
+  • Secure Coding in PHP
+  • GDPR Compliance for Developers
+
+--------------------------------------------------------------------------------
+CONCLUSION
+--------------------------------------------------------------------------------
+
+Votre application a une BONNE BASE (PDO, password_hash, validation).
+
+Mais les 5 vulnérabilités CRITIQUES nécessitent une correction IMMEDIATE:
+  1. Credentials en clair
+  2. Logs de mots de passe
+  3. Pas de rate limiting
+  4. Injection commande
+  5. Pas de CSRF partout
+
+Temps nécessaire: 30-60 minutes pour les corriger.
+
+Après correction des critiques, score passera de 45/100 à ~65/100.
+Après toutes corrections, objectif: 90/100.
+
+COMMENCEZ MAINTENANT avec ACTIONS_IMMEDIATES.md
+
+================================================================================
+Date: 15/01/2026
+Analyste: Verdent Security Audit
+Prochaine révision: 15/02/2026
+================================================================================

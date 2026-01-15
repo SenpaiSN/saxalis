@@ -1,0 +1,124 @@
+<?php
+// API: transfer_goal.php
+// Transfer funds between two goals (no bank transaction). Creates an expense transaction on source and a depot + epargne transaction on target.
+
+require 'config.php';
+require 'auth.php';
+require_auth();
+header('Content-Type: application/json; charset=utf-8');
+
+$input = json_decode(file_get_contents('php://input'), true);
+$from_goal = isset($input['from_goal_id']) ? (int)$input['from_goal_id'] : 0;
+$to_goal = isset($input['to_goal_id']) ? (int)$input['to_goal_id'] : 0;
+$montant = isset($input['montant']) ? (float)$input['montant'] : 0.0;
+// Normalize date: interpret client-provided naive datetimes as Europe/Paris and store as UTC. If absent, use current UTC.
+if (isset($input['date']) && trim($input['date']) !== '') {
+  $rawDate = str_replace('T',' ', trim($input['date']));
+  $dt = DateTime::createFromFormat('Y-m-d H:i:s', $rawDate, new DateTimeZone('Europe/Paris'));
+  if ($dt === false) {
+    try {
+      $dt = new DateTime($rawDate, new DateTimeZone('Europe/Paris'));
+    } catch (Exception $e) {
+      $dt = new DateTime('now', new DateTimeZone('UTC'));
+    }
+  }
+  $dt->setTimezone(new DateTimeZone('UTC'));
+  $date = $dt->format('Y-m-d H:i:s');
+} else {
+  $date = (new DateTime('now', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+}
+$notes = $input['notes'] ?? null;
+
+if (!$from_goal || !$to_goal || $from_goal === $to_goal || $montant <= 0) {
+  http_response_code(400);
+  echo json_encode(['success'=>false,'error'=>'Paramètres invalides']);
+  exit;
+}
+
+try {
+  $uid = current_user_id();
+
+  // Only support objectif_crees model
+  // Verify both exist and belong to user
+  $q = $pdo->prepare("SELECT id_objectif, user_id, id_subcategory FROM objectif_crees WHERE id_objectif = :id LIMIT 1");
+  $q->execute([':id' => $from_goal]);
+  $fromObj = $q->fetch(PDO::FETCH_ASSOC);
+  $q->execute([':id' => $to_goal]);
+  $toObj = $q->fetch(PDO::FETCH_ASSOC);
+
+  if (!$fromObj || !$toObj) {
+    http_response_code(404);
+    echo json_encode(['success'=>false,'error'=>'Objectif source ou cible introuvable']);
+    exit;
+  }
+
+  if ((int)$fromObj['user_id'] !== $uid || (int)$toObj['user_id'] !== $uid) {
+    http_response_code(403);
+    echo json_encode(['success'=>false,'error'=>'Accès refusé']);
+    exit;
+  }
+
+  // Calculate available on source using transactions (deposits id_type=3 into subcategory, minus withdrawals id_type=1 goal_id)
+  $stmt = $pdo->prepare("SELECT COALESCE(SUM(Montant),0) FROM transactions WHERE subcategory_id = :subcat AND id_type = 3 AND id_utilisateur = :uid");
+  $stmt->execute([':subcat' => $fromObj['id_subcategory'], ':uid' => $uid]);
+  $totalDeposits = (float)$stmt->fetchColumn();
+
+  $stmt = $pdo->prepare("SELECT COALESCE(SUM(Montant),0) FROM transactions WHERE goal_id = :gid AND id_type = 1 AND id_utilisateur = :uid");
+  $stmt->execute([':gid' => $from_goal, ':uid' => $uid]);
+  $totalWithdrawn = (float)$stmt->fetchColumn();
+
+  $available = $totalDeposits - $totalWithdrawn;
+
+  if ($montant > $available) {
+    http_response_code(400);
+    echo json_encode(['success'=>false,'error'=>'Fonds insuffisants sur l\'objectif source','available'=>$available]);
+    exit;
+  }
+
+  // Perform transfer: expense on source (goal_id), deposit transaction id_type=3 into target subcategory
+  $pdo->beginTransaction();
+  try {
+    $txSql = "INSERT INTO transactions (id_utilisateur, id_type, `Date`, `Type`, Montant, Notes, goal_id, currency, Montant_eur) VALUES (:uid, :idType, :date, :type, :amount, :notes, :goal_id, :currency, :amount_eur)";
+    $txStmt = $pdo->prepare($txSql);
+    $txStmt->execute([
+      ':uid' => $uid,
+      ':idType' => 1,
+      ':date' => $date,
+      ':type' => 'expense',
+      ':amount' => $montant,
+      ':notes' => $notes ?? "Transfert vers objectif #{$to_goal}",
+      ':goal_id' => $from_goal,
+      ':currency' => 'EUR',
+      ':amount_eur' => $montant
+    ]);
+    $txFromId = $pdo->lastInsertId();
+
+    $txSql2 = "INSERT INTO transactions (id_utilisateur, id_type, `Date`, `Type`, subcategory_id, Montant, Notes, currency, Montant_eur) VALUES (:uid, :idType, :date, :type, :subcat, :amount, :notes, :currency, :amount_eur)";
+    $txStmt2 = $pdo->prepare($txSql2);
+    $txStmt2->execute([
+      ':uid' => $uid,
+      ':idType' => 3,
+      ':date' => $date,
+      ':type' => 'epargne',
+      ':subcat' => $toObj['id_subcategory'],
+      ':amount' => $montant,
+      ':notes' => $notes ?? "Transfert depuis objectif #{$from_goal}",
+      ':currency' => 'EUR',
+      ':amount_eur' => $montant
+    ]);
+    $txToId = $pdo->lastInsertId();
+
+    $pdo->commit();
+    echo json_encode(['success'=>true,'from_transaction_id'=>$txFromId,'to_transaction_id'=>$txToId]);
+    exit;
+  } catch (PDOException $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    throw $e;
+  }
+
+} catch (PDOException $e) {
+  if ($pdo->inTransaction()) $pdo->rollBack();
+  error_log('transfer_goal.php PDOException: ' . $e->getMessage());
+  http_response_code(500);
+  echo json_encode(['success'=>false,'error'=>'Erreur serveur']);
+}

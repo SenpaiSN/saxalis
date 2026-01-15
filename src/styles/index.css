@@ -1,0 +1,13 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+/* Utility: hide native scrollbars for horizontal scrollers used in small UI widgets */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Make snapping smoother when user scrolls the tabs */
+.snap-x.snap-mandatory { scroll-behavior: smooth; }

@@ -1,0 +1,55 @@
+# Protection des fichiers sensibles
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "^config\.local\.php$">
+    Require all denied
+</FilesMatch>
+
+<Files ".gitignore">
+    Require all denied
+</Files>
+
+# Variables d'environnement
+SetEnv DB_HOST sql107.infinityfree.com
+SetEnv DB_PORT 3306
+SetEnv DB_NAME if0_40680976_suivi_depenses
+SetEnv DB_USER if0_40680976
+SetEnv DB_PASS OmarndiongueSN
+SetEnv APP_ENV production
+SetEnv APP_DEBUG false
+
+# Headers de sécurité
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+# Content Security Policy (ajuster selon vos besoins)
+Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://saxalis.free.nf"
+
+# Désactiver l'affichage des erreurs PHP (sécurité)
+php_flag display_errors off
+php_flag display_startup_errors off
+php_value error_reporting 0
+
+# Logs d'erreurs dans un fichier (pas affiché au client)
+php_flag log_errors on
+php_value error_log /home/your_username/logs/php_errors.log
+
+# Configuration des sessions sécurisées
+php_value session.cookie_httponly 1
+php_value session.cookie_secure 1
+php_value session.cookie_samesite Strict
+php_value session.use_strict_mode 1
+
+# Limiter la taille des uploads (2MB pour avatars)
+php_value upload_max_filesize 2M
+php_value post_max_size 3M
+
+# Timeout des sessions (30 minutes)
+php_value session.gc_maxlifetime 1800
+
+# Désactiver les fonctions dangereuses
+php_value disable_functions "exec,passthru,shell_exec,system,proc_open,popen,curl_exec,curl_multi_exec,parse_ini_file,show_source"
