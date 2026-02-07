@@ -52,36 +52,47 @@ if (file_exists(__DIR__ . '/config.local.php')) {
 ini_set('date.timezone', 'UTC');
 
 // Database connection settings — prefer local config -> env vars -> fail if not configured
-// Priority: config.local.php variables > environment variables > fail
+// Detect database type (PostgreSQL for Render, MySQL for local dev)
+$db_driver = getenv('DB_DRIVER') ?: 'mysql';
 $host = $host ?? getenv('DB_HOST') ?: '';
-$port = $port ?? getenv('DB_PORT') ?: '3306';
+$port = $port ?? getenv('DB_PORT') ?: ($db_driver === 'pgsql' ? '5432' : '3306');
 $db   = $db ?? getenv('DB_NAME') ?: '';
 $user = $user ?? getenv('DB_USER') ?: '';
-$pass = $pass ?? getenv('DB_PASS') ?: '';
+$pass = $pass ?? getenv('DB_PASSWORD') ?: getenv('DB_PASS') ?: '';
 
 // Vérifier que les credentials sont configurés
-if (empty($db) || empty($user) || empty($pass)) {
+if (empty($host) || empty($db) || empty($user)) {
     error_log('Database credentials not configured. Please create config.local.php or set environment variables.');
     die(json_encode(['success' => false, 'message' => 'Configuration error - credentials not found']));
 }
 
-$charset = $charset ?? 'utf8mb4';
-$dsn     = "mysql:host=$host;port=$port;dbname=$db;charset=$charset";
-
-$options = [
-  PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-  PDO::ATTR_EMULATE_PREPARES  => false,
-  PDO::ATTR_STRINGIFY_FETCHES  => false,
-  PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES 'utf8mb4', time_zone = '+00:00'",
-  PDO::ATTR_TIMEOUT            => 5,
-  PDO::ATTR_PERSISTENT         => false
-];
+// PostgreSQL or MySQL DSN
+if ($db_driver === 'pgsql') {
+    // PostgreSQL (Render)
+    $dsn = "pgsql:host=$host;port=$port;dbname=$db";
+    $options = [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+        PDO::ATTR_STRINGIFY_FETCHES  => false,
+    ];
+} else {
+    // MySQL (local development)
+    $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
+    $options = [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+        PDO::ATTR_STRINGIFY_FETCHES  => false,
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES 'utf8mb4', time_zone = '+00:00'",
+    ];
+}
 
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (PDOException $e) {
-    die(json_encode(['success' => false, 'message' => $e->getMessage()]));
+    error_log('Database connection failed: ' . $e->getMessage());
+    die(json_encode(['success' => false, 'message' => 'Database connection error: ' . $e->getMessage()]));
 }
 
 // Exchange/conversion helper (static rates). Replace or extend with an external API if you need live rates.
