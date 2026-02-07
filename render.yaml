@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: saxalis
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: FRONTEND_URL
+        value: https://saxalis.render.com
+      - key: DB_DRIVER
+        value: pgsql
+      - key: SESSION_SECRET
+        generateValue: true
+
+    # Build
+    dockerfilePath: ./Dockerfile
+    
+    # Health check
+    healthCheckPath: /index.html
+    
+    # Auto scaling (starter plan)
+    numInstances: 1
+
+databases:
+  - name: saxalis-db
+    databaseName: saxalis
+    user: saxalis_user
+    plan: free
+    postgresSqlVersion: 15

@@ -332,6 +332,13 @@ export async function submitOcrFeedback(payload: any) {
   });
 }
 
+// Search categories across all transaction types (unified endpoint)
+export async function searchCategories(query: string, limit = 10) {
+  return request(`search_categories.php?q=${encodeURIComponent(query)}&limit=${limit}`, {
+    method: 'GET'
+  });
+}
+
 export async function getGoalTransactions(payload: { projet_id: number }) {
   return request('get_goal_transactions.php', {
     method: 'POST',
@@ -391,7 +398,7 @@ export async function addRecurringTransaction(payload: any) {
 }
 
 export async function runRecurringTransactions() {
-  const body = await addCsrfToBody({});
+  const body = await addCsrfToBody({ force: 1 });
   return request('run_recurring_transactions.php', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

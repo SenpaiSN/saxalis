@@ -1,10 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 import * as api from '../../services/api';
-import { X, Calendar as CalendarIcon } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Camera } from 'lucide-react';
 import { Transaction } from '../App';
 import { usePreferences } from '../contexts/PreferencesContext';
 import formatCurrency from '../../lib/formatCurrency';
 import ReceiptScannerModal from './ReceiptScannerModal';
+
+// Convertir une date UTC en heure Europe/Paris (HH:MM)
+function getLocalTimeString(): string {
+  const now = new Date();
+  return now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+}
+
+// Obtenir la date actuelle au format YYYY-MM-DD
+function getLocalDateString(): string {
+  const now = new Date();
+  return now.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' }).split('/').reverse().join('-');
+}
 
 interface AjouterTransactionModernProps {
   onAjouter: (transaction: Omit<Transaction, 'id'>, file?: File | null) => Promise<void> | void;
@@ -19,8 +31,8 @@ export default function AjouterTransactionModern({ onAjouter, onAjouterGoal, onC
   const [type, setType] = useState<string>('expense');
   const [categorieSelectionnee, setCategorieSelectionnee] = useState<number | ''>('');
   const [selectedSubcategory, setSelectedSubcategory] = useState<number | ''>('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [time, setTime] = useState<string>(new Date().toISOString().slice(11,16));
+  const [date, setDate] = useState(getLocalDateString());
+  const [time, setTime] = useState<string>(getLocalTimeString());
   const [note, setNote] = useState('');
   const { locale, currency } = usePreferences();
 
@@ -51,9 +63,44 @@ export default function AjouterTransactionModern({ onAjouter, onAjouterGoal, onC
 
   // Scanner reset key: bumping this remounts the inline scanner to clear its internal state
   const [scannerKey, setScannerKey] = useState<number>(0);
+
+  // Helper function to generate all occurrence dates for a recurring transaction
+  const generateRecurrenceDates = (startDate: Date, frequency: 'daily'|'weekly'|'monthly'|'yearly', interval: number, endDateStr: string): Date[] => {
+    const dates: Date[] = [];
+    const endDate = endDateStr ? new Date(endDateStr) : null;
+    let currentDate = new Date(startDate);
+    
+    // Max 1000 occurrences to prevent infinite loops
+    while (dates.length < 1000) {
+      // Stop if we've passed the end date
+      if (endDate && currentDate > endDate) break;
+      
+      dates.push(new Date(currentDate));
+      
+      // Calculate next date based on frequency
+      switch (frequency) {
+        case 'daily':
+          currentDate.setDate(currentDate.getDate() + interval);
+          break;
+        case 'weekly':
+          currentDate.setDate(currentDate.getDate() + (7 * interval));
+          break;
+        case 'monthly':
+          currentDate.setMonth(currentDate.getMonth() + interval);
+          break;
+        case 'yearly':
+          currentDate.setFullYear(currentDate.getFullYear() + interval);
+          break;
+      }
+    }
+    
+    return dates;
+  };
   // Success message shown after a successful add
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const successTimerRef = useRef<number | null>(null);
+  // Scanner section collapsible state
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const handleScannerComplete = async (data: { merchant: string; amount: number; date?: string; time?: string; category: string }, file: File | null) => {
     console.log('[AjouterTransaction] handleScannerComplete received', { data, file, categoriesCount: categoriesState.length });
@@ -77,70 +124,78 @@ export default function AjouterTransactionModern({ onAjouter, onAjouterGoal, onC
       if (incomeType) guessedTypeCode = incomeType.code;
     }
 
-    setType(guessedTypeCode);
-
+    // Correction: Forcer le type à "expense" si la catégorie est Objectif (ou id_category=13)
     const catRaw = String(data.category || '').trim();
     const mainCat = catRaw.includes('—') ? catRaw.split('—')[0].trim() : catRaw;
-    const suggestedSubCat = catRaw.includes('—') ? catRaw.split('—')[1].trim() : '';
     const lowerCat = mainCat.toLowerCase();
     let matchedCategory: { id_category: number; name: string } | undefined = undefined;
+    matchedCategory = categoriesState.find(c => String(c.name).toLowerCase() === lowerCat);
+    if (matchedCategory && (matchedCategory.name.toLowerCase() === 'objectif' || matchedCategory.id_category === 13)) {
+      guessedTypeCode = 'expense';
+    }
+    setType(guessedTypeCode);
+
+    const catRaw2 = String(data.category || '').trim();
+    const mainCat2 = catRaw2.includes('—') ? catRaw2.split('—')[0].trim() : catRaw2;
+    const suggestedSubCat = catRaw2.includes('—') ? catRaw2.split('—')[1].trim() : '';
+    const lowerCat2 = mainCat2.toLowerCase();
+    let matchedCategory2: { id_category: number; name: string } | undefined = undefined;
 
     // 1) Try current loaded categories (exact + partial)
-    matchedCategory = categoriesState.find(c => String(c.name).toLowerCase() === lowerCat);
-    if (matchedCategory) {
-      setCategorieSelectionnee(matchedCategory.id_category);
-      console.log('[AjouterTransaction] mapped category (exact current)', matchedCategory);
+    matchedCategory2 = categoriesState.find(c => String(c.name).toLowerCase() === lowerCat2);
+    if (matchedCategory2) {
+      setCategorieSelectionnee(matchedCategory2.id_category);
+      console.log('[AjouterTransaction] mapped category (exact current)', matchedCategory2);
     } else {
-      const partialCurrent = categoriesState.find(c => String(c.name).toLowerCase().includes(lowerCat) || lowerCat.includes(String(c.name).toLowerCase()));
+      const partialCurrent = categoriesState.find(c => String(c.name).toLowerCase().includes(lowerCat2) || lowerCat2.includes(String(c.name).toLowerCase()));
       if (partialCurrent) {
         setCategorieSelectionnee(partialCurrent.id_category);
-        matchedCategory = partialCurrent;
+        matchedCategory2 = partialCurrent;
         console.log('[AjouterTransaction] mapped category (partial current)', partialCurrent);
       }
     }
 
-    // 2) If still not found, search across types via API and adopt that type when found
-    if (!matchedCategory && types && types.length) {
-      console.log('[AjouterTransaction] searching across types for category', data.category);
-      for (const t of types) {
-        try {
-          const res = await api.getCategories(t.id_type);
-          if (res.ok && res.data && Array.isArray(res.data.categories)) {
-            const cats: Array<{ id_category: number; name: string }> = res.data.categories;
-            const f = cats.find(c => String(c.name).toLowerCase() === lowerCat) ||
-                    cats.find(c => String(c.name).toLowerCase().includes(lowerCat) || lowerCat.includes(String(c.name).toLowerCase()));
-            if (f) {
-              // apply the discovered type and category
-              setType(t.code);
-              setCategoriesState(cats);
-              setCategorieSelectionnee(f.id_category);
-              matchedCategory = f;
-              console.log('[AjouterTransaction] mapped category across types', { type: t, category: f });
-              setPendingScan(null);
-              break;
-            }
+    // 2) If still not found, use unified search endpoint (PERFORMANCE FIX: single query instead of N+1)
+    if (!matchedCategory2 && lowerCat2.length >= 2) {
+      console.log('[AjouterTransaction] searching across types with unified endpoint', data.category);
+      try {
+        const searchRes = await api.searchCategories(lowerCat2, 5);
+        if (searchRes.ok && searchRes.data && Array.isArray(searchRes.data.results) && searchRes.data.results.length > 0) {
+          const found = searchRes.data.results[0]; // Take best match (already sorted by relevance)
+          // Update type and category
+          setType(found.type_code);
+          setCategorieSelectionnee(found.id_category);
+          matchedCategory2 = { id_category: found.id_category, name: found.name };
+          
+          // Reload categories for this type to populate dropdown
+          const catRes = await api.getCategories(found.type_id);
+          if (catRes.ok && catRes.data && Array.isArray(catRes.data.categories)) {
+            setCategoriesState(catRes.data.categories);
           }
-        } catch (e) {
-          console.warn('Failed to load categories for type', t, e);
+          
+          console.log('[AjouterTransaction] mapped category via search', found);
+          setPendingScan(null);
         }
+      } catch (e) {
+        console.warn('Failed to search categories', e);
       }
     }
 
     // 3) If still no match, append suggestion to the note
-    if (!matchedCategory && lowerCat) {
+    if (!matchedCategory2 && lowerCat2) {
       console.log('[AjouterTransaction] category not matched', data.category);
       setNote(prev => `${prev} — catégorie suggérée: ${data.category}`);
       setPendingScan({ data, file });
     }
 
     // 4) Attempt to match a subcategory using the matched category context
-    if (matchedCategory) {
+    if (matchedCategory2) {
       try {
-        const subRes = await api.getSubcategories(matchedCategory.id_category);
+        const subRes = await api.getSubcategories(matchedCategory2.id_category);
         if (subRes.ok && subRes.data && Array.isArray(subRes.data.subcategories)) {
           const subcats = subRes.data.subcategories;
           const lowerMerchant = (data.merchant || '').toLowerCase();
-          const subKey = suggestedSubCat ? suggestedSubCat.toLowerCase() : lowerCat;
+          const subKey = suggestedSubCat ? suggestedSubCat.toLowerCase() : lowerCat2;
           const subMatch = subcats.find((s: any) => String(s.name).toLowerCase() === subKey) ||
                            subcats.find((s: any) => String(s.name).toLowerCase().includes(subKey) || lowerMerchant.includes(String(s.name).toLowerCase()));
           if (subMatch) {
@@ -196,52 +251,39 @@ export default function AjouterTransactionModern({ onAjouter, onAjouterGoal, onC
     const endOfToday = new Date(); endOfToday.setHours(23,59,59,999);
     const startIsInFuture = startDate > endOfToday;
 
-    if (isRecurring) {
-      // register recurrence on server
+    if (isRecurring && recurrenceEndDate) {
+      // Generate all occurrence dates
+      const occurrenceDates = generateRecurrenceDates(startDate, recurrenceFrequency, recurrenceInterval, recurrenceEndDate);
+      
       try {
-        const payload: any = {
-          Date: dateTime,
-          Type: txTypeForApp,
-          Montant: signedAmount,
-          Catégorie: chosenCategory?.name || (txTypeForApp === 'epargne' ? 'Épargne' : 'Autre'),
-          'Sous-catégorie': selectedSubcategory ? Number(selectedSubcategory) : null,
-          Notes: note,
-          frequency: recurrenceFrequency,
-          interval: recurrenceInterval,
-          end_date: recurrenceEndDate || null,
-          // explicit flag for server: skip initial occurrence when starting in the future
-          skip_initial: startIsInFuture
-        };
-        // compatibility: older API clients may send create_initial_immediately
-        payload.create_initial_immediately = !startIsInFuture;
-        try {
-          const addRes = await api.addRecurringTransaction(payload);
-          if (!(addRes && addRes.ok)) {
-            console.warn('Failed to create recurring transaction plan', addRes);
-          } else {
-            // if the server created the initial occurrence, skip local insertion and refresh the list
-            if (payload.create_initial_immediately) {
-              // reset form and reload to show created transaction/plan
-              setMontant(''); setCategorieSelectionnee(''); setNote(''); setInvoiceFile(null); setInvoiceName(''); setIsRecurring(false); setRecurrenceInterval(1); setRecurrenceEndDate(''); setRecurrenceFrequency('monthly');
-              // naive refresh — the parent should react to new data; for now reload
-              window.location.reload();
-              return;
-            }
-          }
-        } catch (e) {
-          console.error('Error creating recurring plan', e);
+        // Create all occurrences
+        for (const occDate of occurrenceDates) {
+          const occDateTime = occDate.toISOString().replace('T', ' ').split('.')[0];
+          await onAjouter({
+            montant: signedAmount,
+            type: txTypeForApp as any,
+            categorie: chosenCategory?.name || (txTypeForApp === 'epargne' ? 'Épargne' : 'Autre'),
+            date: occDateTime,
+            note: note,
+            emoji: undefined,
+            subcategoryId: selectedSubcategory ? Number(selectedSubcategory) : null
+          }, invoiceFile);
         }
-
-        // If the recurrence starts in the future, do not create the initial transaction now — it will be generated when due
-        if (startIsInFuture) {
-          // reset form and exit
-          setMontant(''); setCategorieSelectionnee(''); setNote(''); setInvoiceFile(null); setInvoiceName(''); setIsRecurring(false); setRecurrenceInterval(1); setRecurrenceEndDate(''); setRecurrenceFrequency('monthly');
-          return;
-        }
-
-        // otherwise fall through and create the initial transaction now (server didn't create it)
+        
+        // Show success and reset form
+        setMontant('');
+        setCategorieSelectionnee('');
+        setNote('');
+        setInvoiceFile(null); setInvoiceName(''); setIsRecurring(false); setRecurrenceInterval(1); setRecurrenceEndDate(''); setRecurrenceFrequency('monthly');
+        setPendingScan(null);
+        setScannerKey(k => k + 1);
+        if (successTimerRef.current) window.clearTimeout(successTimerRef.current);
+        setSuccessMessage(`${occurrenceDates.length} transaction(s) ajoutée(s)`);
+        successTimerRef.current = window.setTimeout(() => setSuccessMessage(null), 3000);
+        return;
       } catch (e) {
-        console.error('Error registering recurrence', e);
+        console.error('Error creating recurring transactions', e);
+        setSuccessMessage('Erreur lors de la création des transactions');
       }
     }
 
@@ -414,6 +456,24 @@ export default function AjouterTransactionModern({ onAjouter, onAjouterGoal, onC
               <strong>✅ {successMessage}</strong>
             </div>
           )}
+
+          {/* Inline Scanner */}
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setIsScannerOpen(!isScannerOpen)}
+              className="w-full py-3 text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center justify-center gap-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <Camera className="w-4 h-4" />
+              Scanner une facture
+            </button>
+            {isScannerOpen && (
+              <div className="mt-4 p-4">
+                <ReceiptScannerModal key={scannerKey} inline onClose={() => {}} onComplete={handleScannerComplete} />
+              </div>
+            )}
+          </div>
+
           {/* Montant (en haut, grand) */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Montant</label>
@@ -462,19 +522,23 @@ export default function AjouterTransactionModern({ onAjouter, onAjouterGoal, onC
                 </div>
               </div>
             ) : (
-              <>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Catégorie</label>
-                <select value={categorieSelectionnee ?? ''} onChange={(e)=>setCategorieSelectionnee(e.target.value ? Number(e.target.value) : '')} className="w-full px-3 py-2 border rounded-md mb-2">
-                  <option value="">Choisir une catégorie</option>
-                  {loadingCategories ? <option>Chargement…</option> : categoriesState.map(c => (<option key={c.id_category} value={c.id_category}>{c.name}</option>))}
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-3">Catégorie</label>
+                  <select value={categorieSelectionnee ?? ''} onChange={(e)=>setCategorieSelectionnee(e.target.value ? Number(e.target.value) : '')} className="w-full px-4 py-3 bg-gray-100 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    <option value="">Choisir une catégorie</option>
+                    {loadingCategories ? <option>Chargement…</option> : categoriesState.map(c => (<option key={c.id_category} value={c.id_category}>{c.name}</option>))}
+                  </select>
+                </div>
 
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Sous-catégorie</label>
-                <select value={selectedSubcategory ?? ''} onChange={(e)=>setSelectedSubcategory(e.target.value ? Number(e.target.value) : '')} className="w-full px-3 py-2 border rounded-md">
-                  <option value="">Choisir une sous-catégorie</option>
-                  {loadingSubcats ? <option>Chargement…</option> : subcategories.map(s => (<option key={s.id_subcategory} value={s.id_subcategory}>{s.name}</option>))}
-                </select> 
-              </>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-3">Sous-catégorie</label>
+                  <select value={selectedSubcategory ?? ''} onChange={(e)=>setSelectedSubcategory(e.target.value ? Number(e.target.value) : '')} className="w-full px-4 py-3 bg-gray-100 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                    <option value="">Choisir une sous-catégorie</option>
+                    {loadingSubcats ? <option>Chargement…</option> : subcategories.map(s => (<option key={s.id_subcategory} value={s.id_subcategory}>{s.name}</option>))}
+                  </select>
+                </div>
+              </div>
             )}
           </div>
 
@@ -507,11 +571,6 @@ export default function AjouterTransactionModern({ onAjouter, onAjouterGoal, onC
               rows={3}
               className="w-full px-3 py-2 border rounded-md resize-none"
             />
-          </div>
-
-          {/* Inline Scanner */}
-          <div className="mt-6">
-            <ReceiptScannerModal inline onClose={() => {}} onComplete={handleScannerComplete} />
           </div>
 
           {/* Recurrence + Attached invoice (scanner-only) */}

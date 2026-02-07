@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { X, FilePlus, Calendar } from 'lucide-react';
 import { usePreferences } from '../contexts/PreferencesContext';
 
+// Convertir une date UTC en chaîne YYYY-MM-DD (Europe/Paris)
+function getLocalDateString(): string {
+  const now = new Date();
+  return now.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' }).split('/').reverse().join('-');
+}
+
 // Exemple de structure de catégorie (à adapter à ton modèle)
 const CATEGORIES = [
   { key: 'Alimentation', emoji: '🍔' },
@@ -45,7 +51,7 @@ export default function TransactionModal({
   initialValues = {},
 }: TransactionModalProps) {
   const [type, setType] = useState(initialValues.type || 'dépense');
-  const [date, setDate] = useState(initialValues.date || new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(initialValues.date || getLocalDateString());
   const [montant, setMontant] = useState(initialValues.montant ? String(initialValues.montant) : '');
   const [categorie, setCategorie] = useState(initialValues.categorie || 'Alimentation');
   const [note, setNote] = useState(initialValues.note || '');

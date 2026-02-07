@@ -43,7 +43,7 @@ try {
     $subId = $newSubId;
   }
 
-  // Insert into objectif_crees (respect the automatique flag)
+  // Insert into objectif_crees (respect the automatique flag and date_cible)
   // Convert montant_objectif to canonical XOF before insertion (use user's currency)
   try {
     $uid = current_user_id();
@@ -60,13 +60,13 @@ try {
 
   // Some schemas have no AUTO_INCREMENT on id_objectif; compute an explicit id and insert it to ensure the row is created
   $newObjId = $pdo->query("SELECT COALESCE(MAX(id_objectif), 0) + 1 FROM objectif_crees")->fetchColumn();
-  $insObj = $pdo->prepare("INSERT INTO objectif_crees (id_objectif, user_id, id_subcategory, montant, date_depot, automatique) VALUES (:id, :uid, :subId, :montant, NOW(), :automatique)");
-  $insObj->execute([':id' => $newObjId, ':uid' => $uid, ':subId' => $subId, ':montant' => $montant_objectif, ':automatique' => $automatique]);
+  $insObj = $pdo->prepare("INSERT INTO objectif_crees (id_objectif, user_id, id_subcategory, montant, date_depot, automatique, date_cible) VALUES (:id, :uid, :subId, :montant, NOW(), :automatique, :date_cible)");
+  $insObj->execute([':id' => $newObjId, ':uid' => $uid, ':subId' => $subId, ':montant' => $montant_objectif, ':automatique' => $automatique, ':date_cible' => $date_cible]);
 
   $newId = $newObjId;
 
   // Return the created goal row (same shape as get_objectifs_crees)
-  $select = $pdo->prepare("\n    SELECT\n      o.id_objectif,\n      o.user_id,\n      o.id_subcategory,\n      s.name,\n      o.montant AS montant_objectif,\n      DATE(o.date_depot) AS date_creation,\n      COALESCE(SUM(t.Montant), 0) AS total_collected,\n      ROUND(LEAST(100, COALESCE(SUM(t.Montant), 0) / o.montant * 100), 2) AS progress_pct,\n      COUNT(t.id_transaction) AS nb_versements\n    FROM objectif_crees o\n    LEFT JOIN subcategories s ON s.id_subcategory = o.id_subcategory\n    LEFT JOIN transactions t ON t.subcategory_id = o.id_subcategory AND t.id_utilisateur = o.user_id\n    WHERE o.id_objectif = :id\n    GROUP BY o.id_objectif\n  ");
+  $select = $pdo->prepare("\n    SELECT\n      o.id_objectif,\n      o.user_id,\n      o.id_subcategory,\n      s.name,\n      o.montant AS montant_objectif,\n      DATE(o.date_depot) AS date_creation,\n      o.date_cible,\n      COALESCE(SUM(t.Montant), 0) AS total_collected,\n      ROUND(LEAST(100, COALESCE(SUM(t.Montant), 0) / o.montant * 100), 2) AS progress_pct,\n      COUNT(t.id_transaction) AS nb_versements\n    FROM objectif_crees o\n    LEFT JOIN subcategories s ON s.id_subcategory = o.id_subcategory\n    LEFT JOIN transactions t ON t.subcategory_id = o.id_subcategory AND t.id_utilisateur = o.user_id\n    WHERE o.id_objectif = :id\n    GROUP BY o.id_objectif\n  ");
   $select->execute([':id' => $newId]);
   $goal = $select->fetch(PDO::FETCH_ASSOC);
 

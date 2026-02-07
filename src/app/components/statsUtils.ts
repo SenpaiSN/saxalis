@@ -88,20 +88,20 @@ export function computeTotals(transactions: Transaction[], types?: Array<{ id_ty
 
   const sum = (arr: Transaction[]) => arr.reduce((s, t) => s + (t.montant ?? 0), 0);
 
-  // revenus (exclude aggregated "Total général" rows)
-  const revenusAll = transactions.filter(t => t.type === 'revenu' && !isTotalGeneralCategory(t.categorie));
+  // revenus (exclude aggregated "Total général" rows and exclude savings)
+  const revenusAll = transactions.filter(t => t.type === 'revenu' && !isTotalGeneralCategory(t.categorie) && !isSavingsTx(t, types));
   const revenusReal = revenusAll.filter(isReal);
   const revenusForecast = revenusAll.filter(isForecast);
 
   // depenses (exclude aggregated "Total général" rows)
-  // Treat transactions whose category is "Objectif" (or similar) as expenses for balance calculations
-  const depensesAll = transactions.filter(t => ((t.type === 'dépense') || isObjectiveCategory(t.categorie)) && !isTotalGeneralCategory(t.categorie));
+  // N'inclure QUE les vraies dépenses (type='dépense'). Les épargnes sont gérées séparément et déduites du solde.
+  const depensesAll = transactions.filter(t => (t.type === 'dépense') && !isTotalGeneralCategory(t.categorie));
   const depensesReal = depensesAll.filter(isReal);
   const depensesForecast = depensesAll.filter(isForecast);
 
   // epargne (exclude aggregated "Total général" rows)
-  // Exclude "Objectif" category from savings so it's not double-counted (we treat it as an expense)
-  const epargneAll = transactions.filter(t => t && t.date && !isNaN(Date.parse(t.date)) && isSavingsTx(t, types) && !isTotalGeneralCategory(t.categorie) && !isObjectiveCategory(t.categorie));
+  // Exclude "Objectif" category from savings so it's not double-counted (we treat it comme de l'épargne affectée)
+  const epargneAll = transactions.filter(t => t && t.date && !isNaN(Date.parse(t.date)) && isSavingsTx(t, types) && !isTotalGeneralCategory(t.categorie));
   const epargneReal = epargneAll.filter(isReal);
   const epargneForecast = epargneAll.filter(isForecast);
 

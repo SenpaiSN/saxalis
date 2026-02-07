@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import useAxesReady from '../../hooks/useAxesReady';
-import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Customized } from 'recharts';
+import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Customized, Legend } from 'recharts';
 
 interface Point { index?: number; moisShort?: string; date?: Date; revenus: number; depenses: number }
 
@@ -17,7 +17,7 @@ export default function EvolutionChart({ data, formatCurrency, chartsReady = tru
 
   // Show a tick for every month (user requested all months on the x-axis)
   const xTicksIndices = data.map((d, i) => i);
-  const xTickProps = data.length > 6 ? { fontSize: 11, angle: -45 as const, textAnchor: 'end' as const } : { fontSize: 12 };
+  const xTickProps = data.length > 6 ? { fontSize: 9, angle: -45 as const, textAnchor: 'end' as const } : { fontSize: 10 };
 
   data.forEach((d, i) => { (d as any).index = i; });
 
@@ -35,7 +35,7 @@ export default function EvolutionChart({ data, formatCurrency, chartsReady = tru
   return (
     <div ref={containerRef} style={{ height: '100%' }}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data}>
+        <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorRevenus" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#10b981" stopOpacity={0.28}/>
@@ -47,6 +47,7 @@ export default function EvolutionChart({ data, formatCurrency, chartsReady = tru
             </linearGradient>
           </defs>
 
+          <Legend align="center" verticalAlign="top" wrapperStyle={{ paddingBottom: '0px' }} />
           <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
           <XAxis
             dataKey="index"
@@ -58,14 +59,17 @@ export default function EvolutionChart({ data, formatCurrency, chartsReady = tru
               const usedLocale = locale ?? undefined;
               if (typeof idx === 'number' && data[idx]?.date) {
                 try {
-                  // Format court : 'MMM yyyy'
-                  return data[idx].date.toLocaleDateString(usedLocale, { month: 'short', year: 'numeric' });
+                  // Format MM/AAAA
+                  const date = data[idx].date;
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const year = date.getFullYear();
+                  return `${month}/${year}`;
                 } catch (e) {}
               }
               return data[idx]?.moisShort ?? '';
             }}
           />
-          <YAxis yAxisId={0} stroke="#9ca3af" tickFormatter={(v:any)=>formatCurrency(Number(v))} />
+          <YAxis yAxisId={0} stroke="#9ca3af" width={40} tick={{ fontSize: 9 }} tickFormatter={(v:any)=>Math.round(Number(v)).toLocaleString('fr-FR')} domain={['dataMin - 100', 'dataMax + 100']} />
           <Tooltip formatter={(value: any) => typeof value === 'number' ? formatCurrency(Number(value)) : String(value)} labelFormatter={(idx:any) => (typeof idx === 'number' ? (data[idx]?.moisShort ?? String(idx)) : String(idx))} />
 
           <Area type="monotone" dataKey="revenus" stroke="#10b981" strokeWidth={2} fill="url(#colorRevenus)" />

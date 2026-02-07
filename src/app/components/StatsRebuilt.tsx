@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Filters from './Filters';
 import SummaryCards from './SummaryCards';
+import MonthlyPerformanceCard from './MonthlyPerformanceCard';
 import { computeTotals, isSavingsTx } from './statsUtils';
 import { Transaction } from '../App';
 import { usePreferences } from '../contexts/PreferencesContext';
 import { aggregateMonthlyEvolution, aggregateCategoryBreakdown, computeMonthlySavingsAndProjections } from './statsAggregation';
 import formatCurrency from '../../lib/formatCurrency';
-import EvolutionChart from './charts/EvolutionChart';
+import ComparisonChart from './charts/ComparisonChart';
 import CategoryChart from './charts/CategoryChart';
 import SavingsChart from './charts/SavingsChart';
 
@@ -61,6 +62,67 @@ export default function StatsRebuilt({ transactions, recherche, setRecherche, an
 
   // compute totals on the filtered set so all cards reflect active filters
   const totals = computeTotals(transactionsFiltres, types);
+
+  // For Revenus/Dépenses cards: apply current month/year as default filter if not explicitly set
+  const now = new Date();
+  const defaultAnnee = String(now.getFullYear());
+  const defaultMois = String(now.getMonth() + 1);
+  
+  // For current month display: include revenus/dépenses until end of month (including forecasts)
+  const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  
+  const transactionsRevenusDepenses = transactions.filter(t => {
+    const search = recherche.trim().toLowerCase();
+    const matchRecherche = search.length === 0 ? true : (t.categorie || '').toLowerCase().includes(search);
+    const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
+    const matchType = filtreType === 'tous' || txCode === filtreType;
+    const txDate = new Date(t.date);
+    // For Revenus/Dépenses: use current month/year by default, but respect explicit filter selections
+    const effectiveAnnee = annee !== 'Tous' ? annee : defaultAnnee;
+    const effectiveMois = mois !== 'Tous' ? mois : defaultMois;
+    const matchAnnee = String(txDate.getFullYear()) === effectiveAnnee;
+    const matchMois = (txDate.getMonth() + 1) === Number(effectiveMois);
+    
+    // For current month: include transactions up to end of month (even if in future)
+    // For other months: keep strict date filtering
+    let matchDate = true;
+    if (effectiveAnnee === defaultAnnee && effectiveMois === defaultMois) {
+      // Current month: include everything until end of month
+      matchDate = txDate <= endOfCurrentMonth;
+    } else {
+      // Other months: use default behavior (only past transactions)
+      matchDate = true; // Already filtered by year/month above
+    }
+    
+    const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
+    const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
+    const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
+    const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
+    const overall = matchRecherche && matchType && matchAnnee && matchMois && matchDate && matchCategorie && matchSous;
+    return overall;
+  });
+  const totalsRevenusDepenses = computeTotals(transactionsRevenusDepenses, types);
+
+  // For "Économie annuelle" and "Revenus annuels" cards: calculate full year totals WITHOUT month filter
+  const transactionsAnnuelComplet = transactions.filter(t => {
+    const search = recherche.trim().toLowerCase();
+    const matchRecherche = search.length === 0 ? true : (t.categorie || '').toLowerCase().includes(search);
+    const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
+    const matchType = filtreType === 'tous' || txCode === filtreType;
+    const txDate = new Date(t.date);
+    
+    // Use selected year, but NO month filter
+    const effectiveAnnee = annee !== 'Tous' ? annee : defaultAnnee;
+    const matchAnnee = String(txDate.getFullYear()) === effectiveAnnee;
+    
+    const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
+    const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
+    const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
+    const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
+    
+    return matchRecherche && matchType && matchAnnee && matchCategorie && matchSous;
+  });
+  const totalsAnnuelComplet = computeTotals(transactionsAnnuelComplet, types);
 
   const refDate = (() => {
     const now = new Date();
@@ -192,23 +254,63 @@ export default function StatsRebuilt({ transactions, recherche, setRecherche, an
     return `${sign}${Math.abs(pct).toFixed(2)}% par rapport à ${prevLabelCapitalized}`;
   };
 
-  revenusChangeLabel = computeChangeLabel(totals.revenus.real, prevRevenus);
-  depensesChangeLabel = computeChangeLabel(totals.depenses.real, prevDepenses);
-  epargneChangeLabel = computeChangeLabel(totals.epargne.real, prevEpargne);
+  revenusChangeLabel = computeChangeLabel(totalsAnnuelComplet.revenus.real, prevRevenus);
+  depensesChangeLabel = computeChangeLabel(totalsAnnuelComplet.depenses.real, prevDepenses);
+  epargneChangeLabel = computeChangeLabel(totalsAnnuelComplet.epargne.real, prevEpargne);
 
-  const currentSolde = totals.revenus.real - totals.depenses.real;
+  const currentSolde = totalsAnnuelComplet.revenus.real - totalsAnnuelComplet.depenses.real;
   const prevSolde = prevRevenus - prevDepenses;
   soldeChangeLabel = computeChangeLabel(currentSolde, prevSolde);
-  const evolutionData = aggregateMonthlyEvolution(transactionsFiltres, locale);
+
+  // For Comparaison revenus vs dépenses: apply current year as default filter if not explicitly set
+  const transactionsEvolution = transactions.filter(t => {
+    const search = recherche.trim().toLowerCase();
+    const matchRecherche = search.length === 0 ? true : (t.categorie || '').toLowerCase().includes(search);
+    const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
+    const matchType = filtreType === 'tous' || txCode === filtreType;
+    const txDate = new Date(t.date);
+    // For Evolution chart: use current year by default, but respect explicit filter selections
+    const effectiveAnnee = annee !== 'Tous' ? annee : defaultAnnee;
+    const matchAnnee = String(txDate.getFullYear()) === effectiveAnnee;
+    // For evolution chart: only apply month filter if explicitly selected; otherwise show all months of the year
+    const matchMois = mois === 'Tous' || (txDate.getMonth() + 1) === Number(mois);
+    const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
+    const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
+    const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
+    const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
+    return matchRecherche && matchType && matchAnnee && matchMois && matchCategorie && matchSous;
+  });
+  const effectiveAnneeEvolution = annee !== 'Tous' ? annee : defaultAnnee;
+
+  const evolutionData = aggregateMonthlyEvolution(transactionsEvolution, locale);
   evolutionData.forEach((d, i) => { (d as any).index = i; });
   const xTickStep = Math.max(1, Math.ceil(evolutionData.length / 6));
   const xTicksIndices = evolutionData.map((d, i) => (i % xTickStep === 0 ? i : null)).filter(v => v !== null) as number[];
 
-  const categoriesData = aggregateCategoryBreakdown(transactionsFiltres);
+  // For Category breakdown: apply current month/year as default filter if not explicitly set
+  const transactionsCategoryBreakdown = transactions.filter(t => {
+    const search = recherche.trim().toLowerCase();
+    const matchRecherche = search.length === 0 ? true : (t.categorie || '').toLowerCase().includes(search);
+    const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
+    const matchType = filtreType === 'tous' || txCode === filtreType;
+    const txDate = new Date(t.date);
+    // For Category breakdown: use current month/year by default, but respect explicit filter selections
+    const effectiveAnnee = annee !== 'Tous' ? annee : defaultAnnee;
+    const effectiveMois = mois !== 'Tous' ? mois : defaultMois;
+    const matchAnnee = String(txDate.getFullYear()) === effectiveAnnee;
+    const matchMois = (txDate.getMonth() + 1) === Number(effectiveMois);
+    const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
+    const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
+    const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
+    const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
+    const overall = matchRecherche && matchType && matchAnnee && matchMois && matchCategorie && matchSous;
+    return overall;
+  });
+
+  const categoriesData = aggregateCategoryBreakdown(transactionsCategoryBreakdown);
 
   const monthlySavings = computeMonthlySavingsAndProjections(transactions);
   // Trim to show up to 3 months of projection after current month
-  const now = new Date();
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const projMonths = 3;
   const displayEndDate = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() + projMonths, 1);
@@ -221,6 +323,140 @@ export default function StatsRebuilt({ transactions, recherche, setRecherche, an
   const projSumValue = displayedMonthlySavings.filter(m => typeof m.proj === 'number').reduce((sum, m) => sum + (m.proj ?? 0), 0);
   const savingsChartData = displayedMonthlySavings.map((m, i) => ({ index: i, name: m.label, real: m.real, proj: m.proj }));
 
+  // Calculate patrimoine (wealth) at beginning and end of year
+  const selectedYear = annee && annee !== 'Tous' ? Number(annee) : new Date().getFullYear();
+  const prevYear = selectedYear - 1;
+
+  // Patrimoine at end of previous year (before selected year)
+  const patrimoineDebut = transactions
+    .filter(t => {
+      const txDate = new Date(t.date);
+      return txDate.getFullYear() < selectedYear;
+    })
+    .filter(t => isSavingsTx(t, types))
+    .reduce((sum, t) => sum + t.montant, 0);
+
+  // Patrimoine at end of selected year
+  const patrimoineFin = transactions
+    .filter(t => {
+      const txDate = new Date(t.date);
+      return txDate.getFullYear() <= selectedYear;
+    })
+    .filter(t => isSavingsTx(t, types))
+    .reduce((sum, t) => sum + t.montant, 0);
+
+  const patrimoineEvolution = patrimoineDebut !== 0
+    ? ((patrimoineFin - patrimoineDebut) / Math.abs(patrimoineDebut)) * 100
+    : (patrimoineFin > 0 ? 100 : 0);
+
+  const patrimoineEvolutionEuros = patrimoineFin - patrimoineDebut;
+
+  const patrimoineChangeLabel = patrimoineDebut !== 0
+    ? `De ${formatCurrency(patrimoineDebut)} à ${formatCurrency(patrimoineFin)}`
+    : `Patrimoine acquis: ${formatCurrency(patrimoineFin)}`;
+
+  // Calculate monthly performance metrics
+  const monthlyPerformance = (() => {
+    const now = new Date();
+    const monthData: { [key: string]: { revenues: number; expenses: number; month: string } } = {};
+    
+    transactionsFiltres.forEach(t => {
+      const txDate = new Date(t.date);
+      
+      // Exclude future transactions (only include past transactions)
+      if (txDate > now) return;
+      
+      // Only include transactions from the selected year
+      if (txDate.getFullYear() !== selectedYear) return;
+      
+      const monthKey = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (!monthData[monthKey]) {
+        const monthName = txDate.toLocaleDateString(locale, { month: 'long', year: undefined });
+        monthData[monthKey] = { revenues: 0, expenses: 0, month: monthName.charAt(0).toUpperCase() + monthName.slice(1) };
+      }
+      
+      if (t.type === 'revenu') {
+        monthData[monthKey].revenues += t.montant ?? 0;
+      } else if (t.type === 'dépense') {
+        monthData[monthKey].expenses += Math.abs(t.montant);
+      }
+    });
+
+    const months = Object.values(monthData);
+    
+    if (months.length === 0) {
+      return {
+        meilleurMois: null,
+        pireMois: null,
+        moisPlusDependsier: null,
+        moisPlusEconome: null,
+        year: selectedYear,
+      };
+    }
+
+    // Calculate averages for comparison
+    const avgCashFlow = months.reduce((sum, m) => sum + (m.revenues - m.expenses), 0) / months.length;
+    const avgExpenses = months.reduce((sum, m) => sum + m.expenses, 0) / months.length;
+
+    // Meilleur mois (cash flow le plus élevé)
+    const meilleurMoisData = months.reduce((best, m) => (m.revenues - m.expenses > best.revenues - best.expenses) ? m : best);
+    const meilleurCashFlow = meilleurMoisData.revenues - meilleurMoisData.expenses;
+    const meilleurPercentChange = avgCashFlow !== 0 ? ((meilleurCashFlow - avgCashFlow) / Math.abs(avgCashFlow)) * 100 : 0;
+
+    // Pire mois (cash flow le plus négatif)
+    const pireMoisData = months.reduce((worst, m) => (m.revenues - m.expenses < worst.revenues - worst.expenses) ? m : worst);
+    const pireCashFlow = pireMoisData.revenues - pireMoisData.expenses;
+    const pirePercentChange = avgCashFlow !== 0 ? ((pireCashFlow - avgCashFlow) / Math.abs(avgCashFlow)) * 100 : 0;
+
+    // Mois le plus dépensier
+    const moisPlusDependsierData = months.reduce((max, m) => (m.expenses > max.expenses) ? m : max);
+    const depensiePercentChange = avgExpenses !== 0 ? ((moisPlusDependsierData.expenses - avgExpenses) / avgExpenses) * 100 : 0;
+
+    // Mois le plus économe
+    const moisPlusEconomeData = months.reduce((min, m) => (m.expenses < min.expenses) ? m : min);
+    const economePercentChange = avgExpenses !== 0 ? ((moisPlusEconomeData.expenses - avgExpenses) / avgExpenses) * 100 : 0;
+
+    return {
+      meilleurMois: {
+        month: meilleurMoisData.month,
+        value: meilleurCashFlow,
+        description: meilleurMoisData.revenues > avgCashFlow ? 'Revenus exceptionnels' : 'Dépenses basses',
+        percentChange: meilleurPercentChange,
+        icon: '📈',
+        label: 'Meilleur mois',
+        color: 'green' as const,
+      },
+      pireMois: {
+        month: pireMoisData.month,
+        value: pireCashFlow,
+        description: pireMoisData.revenues < avgCashFlow ? 'Revenus bas + dépenses élevées' : 'Dépenses exceptionnelles',
+        percentChange: pirePercentChange,
+        icon: '⚠️',
+        label: 'Pire mois',
+        color: 'red' as const,
+      },
+      moisPlusDependsier: {
+        month: moisPlusDependsierData.month,
+        value: moisPlusDependsierData.expenses,
+        description: `+${Math.round(moisPlusDependsierData.expenses - avgExpenses)} € vs moyenne`,
+        percentChange: depensiePercentChange,
+        icon: '🛒',
+        label: 'Mois le plus dépensier',
+        color: 'red' as const,
+      },
+      moisPlusEconome: {
+        month: moisPlusEconomeData.month,
+        value: moisPlusEconomeData.expenses,
+        description: `${Math.round(avgExpenses - moisPlusEconomeData.expenses)} € vs moyenne`,
+        percentChange: economePercentChange,
+        icon: '🌿',
+        label: 'Mois le plus économe',
+        color: 'green' as const,
+      },
+      year: selectedYear,
+    };
+  })();
 
   // Monthly savings from API (authoritative, uses validated transactions only)
   const [apiMonthlySavings, setApiMonthlySavings] = useState<{ revenues: number; expenses: number; savings: number; savings_pct: number | null } | null>(null);
@@ -312,36 +548,39 @@ export default function StatsRebuilt({ transactions, recherche, setRecherche, an
       </div> 
 
       <SummaryCards
-        totalRevenusReal={totals.revenus.real}
-        totalRevenusForecast={totals.revenus.forecast}
-        totalDepensesReal={totals.depenses.real}
-        totalDepensesForecast={totals.depenses.forecast}
-        totalEpargneReal={totals.epargne.real}
-        totalEpargneForecast={totals.epargne.forecast}
+        totalRevenusReal={totalsAnnuelComplet.revenus.real}
+        totalRevenusForecast={totalsAnnuelComplet.revenus.forecast}
+        totalDepensesReal={totalsAnnuelComplet.depenses.real}
+        totalDepensesForecast={totalsAnnuelComplet.depenses.forecast}
+        totalEpargneReal={totalsAnnuelComplet.epargne.real}
+        totalEpargneForecast={totalsAnnuelComplet.epargne.forecast}
         resteADepenserReal={totals.resteADepenserReal}
         resteADepenserAll={totals.resteADepenserAll}
-        tauxEpargneReal={totals.tauxEpargneReal}
+        tauxEpargneReal={totalsAnnuelComplet.tauxEpargneReal}
         formatCurrencyFn={formatCurrency}
         revenusChangeLabel={revenusChangeLabel}
         depensesChangeLabel={depensesChangeLabel}
         epargneChangeLabel={epargneChangeLabel}
           soldeChangeLabel={soldeChangeLabel}
-        soldeValue={totals.revenus.real - totals.depenses.real}
+        soldeValue={totalsAnnuelComplet.revenus.real - totalsAnnuelComplet.depenses.real}
+        patrimoineEvolution={patrimoineEvolution}
+        patrimoineEvolutionEuros={patrimoineEvolutionEuros}
+        patrimoineChangeLabel={patrimoineChangeLabel}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-bold text-sm mb-3">Évolution mensuelle</h3>
-          <div className="h-48">
-            <EvolutionChart data={evolutionData} formatCurrency={formatCurrency} chartsReady={chartsReady} locale={locale} />
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-sm">Comparaison revenus vs dépenses</h3>
+            <span className="text-sm font-bold text-gray-400">{effectiveAnneeEvolution}</span>
+          </div>
+          <div className="h-64">
+            <ComparisonChart data={evolutionData} formatCurrency={formatCurrency} chartsReady={chartsReady} locale={locale} annee={effectiveAnneeEvolution} />
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-bold text-sm mb-3">Répartition des dépenses</h3>
-          <div className="h-48">
-            <CategoryChart data={categoriesData} formatCurrency={formatCurrency} colors={COLORS} />
-          </div>
+        <div className="col-span-1">
+          <MonthlyPerformanceCard data={monthlyPerformance} formatCurrency={formatCurrency} />
         </div>
       </div>
 

@@ -1,7 +1,6 @@
 <?php
 require 'config.php';
 require 'auth.php';
-require_auth();
 header('Content-Type: application/json; charset=utf-8');
 
 try {
@@ -13,8 +12,29 @@ try {
   }
 
   // require explicit manual trigger to run the generation (avoid accidental external runs)
+  // For cron_secret validation, we don't need authentication
+  // For manual force=1 calls, we require authentication
   $force = (isset($_GET['force']) && $_GET['force'] === '1') || (isset($_POST['force']) && $_POST['force'] === '1');
-  if (!$force && !$trusted_cron) {
+  
+  // Check if user is authenticated (for force=1 or regular authenticated calls)
+  $is_authenticated = !empty($_SESSION['user']['id_utilisateur']);
+  
+  // Allow if:
+  // 1. Valid cron_secret provided (no auth needed), OR
+  // 2. User is authenticated AND (force=1 OR no protection needed)
+  $is_allowed = $trusted_cron || ($is_authenticated && ($force || !empty($_POST) || !empty($_GET)));
+  
+  if (!$is_allowed) {
+    // If not authenticated and no cron_secret, require auth to show proper error
+    if (!$is_authenticated) {
+      require_auth();
+    }
+    echo json_encode(['success' => false, 'error' => 'runner_disabled', 'message' => 'Runner disabled by default; call with ?force=1 to run manually or provide a valid cron_secret.']);
+    exit;
+  }
+  
+  // For authenticated requests without cron_secret, optionally require force=1
+  if (!$trusted_cron && $is_authenticated && !$force) {
     echo json_encode(['success' => false, 'error' => 'runner_disabled', 'message' => 'Runner disabled by default; call with ?force=1 to run manually or provide a valid cron_secret.']);
     exit;
   }

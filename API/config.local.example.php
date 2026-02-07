@@ -9,5 +9,9 @@ $user = 'if0_40680976';
 $pass = 'OmarndiongueSN';
 
 // Optional: secret token used to securely run recurring-plan runners from cron/scripts
-// Example: $cron_secret = 'replace-with-a-long-random-secret';
+// Generate a long random secret: use a password manager or: python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+// If you have a cron service (not on InfinityFree), uncomment and set this:
+// $cron_secret = 'your-long-random-secret-here-minimum-32-chars';
 
+// On InfinityFree: You can call the runner from within the app using force=1 while authenticated
+// Since InfinityFree doesn't support traditional cron jobs, use the app's UI or a scheduled task from another service

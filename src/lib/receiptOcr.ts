@@ -1,4 +1,4 @@
-let worker: any = null;
+import { createWorker, Worker } from 'tesseract.js';
 
 // Scoring configuration (weights normalized roughly to importance). Modify as needed.
 export const scoringConfig = {
@@ -38,17 +38,92 @@ export const scoringConfig = {
   }
 };
 
-// Simple mutex to ensure we don't run multiple recognize jobs concurrently on the same worker
-const workerMutex = new (class {
-  private _p: Promise<void> = Promise.resolve();
-  lock(): Promise<() => void> {
-    let release!: () => void;
-    const next = new Promise<void>(res => { release = res; });
-    const cur = this._p;
-    this._p = cur.then(() => next);
-    return cur.then(() => release);
+// Thread-safe worker pool
+class TesseractPool {
+  private workers: Array<{ worker: Worker; busy: boolean }> = [];
+  private readonly poolSize = 2;
+  private initPromise: Promise<void> | null = null;
+
+  async initialize() {
+    if (this.initPromise) return this.initPromise;
+    
+    this.initPromise = (async () => {
+      try {
+        // Pre-create one worker for faster first use
+        const worker = await createWorker('fra', undefined, {
+          logger: (m: any) => console.debug('[tesseract]', m)
+        });
+        this.workers.push({ worker, busy: false });
+      } catch (e) {
+        console.warn('Failed to initialize FRA language, trying ENG', e);
+        try {
+          const worker = await createWorker('eng', undefined, {
+            logger: (m: any) => console.debug('[tesseract]', m)
+          });
+          this.workers.push({ worker, busy: false });
+        } catch (ee) {
+          console.error('Failed to initialize any OCR worker', ee);
+          throw new Error('OCR initialization failed');
+        }
+      }
+    })();
+
+    return this.initPromise;
   }
-})();
+
+  async acquire(): Promise<Worker> {
+    await this.initialize();
+
+    // Find free worker or create new one (up to poolSize)
+    let slot = this.workers.find(w => !w.busy);
+    
+    if (!slot) {
+      if (this.workers.length < this.poolSize) {
+        try {
+          const worker = await createWorker('fra', undefined, {
+            logger: (m: any) => console.debug('[tesseract]', m)
+          });
+          slot = { worker, busy: false };
+          this.workers.push(slot);
+        } catch (e) {
+          // Fallback to existing worker (wait)
+          await new Promise(res => setTimeout(res, 100));
+          return this.acquire();
+        }
+      } else {
+        // Wait for free worker
+        await new Promise(res => setTimeout(res, 100));
+        return this.acquire();
+      }
+    }
+    
+    slot.busy = true;
+    return slot.worker;
+  }
+
+  release(worker: Worker) {
+    const slot = this.workers.find(w => w.worker === worker);
+    if (slot) slot.busy = false;
+  }
+
+  async terminate() {
+    await Promise.all(this.workers.map(w => w.worker.terminate()));
+    this.workers = [];
+    this.initPromise = null;
+  }
+}
+
+const pool = new TesseractPool();
+
+// Export for preloading
+export async function preloadWorker() {
+  await pool.initialize();
+}
+
+// Export for cleanup
+export async function terminateWorkers() {
+  await pool.terminate();
+}
 
 async function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
@@ -138,28 +213,6 @@ async function cropImage(dataUrl: string, bbox: { left: number, top: number, wid
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
   return canvas.toDataURL('image/jpeg', 0.95);
-}
-
-async function getWorker() {
-  if (worker) return worker;
-  const mod: any = await import('tesseract.js');
-  // Some bundlers put exports on `default` — handle both shapes defensively
-  const createWorker = mod.createWorker ?? mod.default?.createWorker ?? mod.default;
-  if (typeof createWorker !== 'function') throw new Error('Unsupported tesseract.js import shape: createWorker function not found');
-
-  // createWorker returns a Promise that resolves to the worker API — await it so we get the
-  // actual worker object (which exposes methods like `loadLanguage`, `initialize`, `recognize`, etc.)
-  worker = await createWorker({ logger: (m: any) => console.debug('[tesseract]', m) });
-  // `load` is deprecated in newer tesseract.js versions and workers are pre-loaded; no need to call it
-  // try to initialize french, but fallback to english if unavailable
-  try {
-    await worker.loadLanguage('fra');
-    await worker.initialize('fra');
-  } catch (e) {
-    console.warn('Failed to initialize FRA language, falling back to ENG', e);
-    try { await worker.loadLanguage('eng'); await worker.initialize('eng'); } catch (ee) { console.warn('Failed to init ENG', ee); }
-  }
-  return worker;
 }
 
 function findNumbers(text: string) {
@@ -259,7 +312,7 @@ function parseDateAndTime(fullText: string) {
 
   // If none matched, try to find a loose pattern like '11 Jan 2026' (day monthname year)
   const monthNames = '(janv(?:ier)?|févr(?:ier)?|mars|avr(?:il)?|mai|juin|juil(?:let)?|août|sept(?:embre)?|oct(?:obre)?|nov(?:embre)?|déc(?:embre)?)';
-  m = fullText.match(new RegExp(`\b(\d{1,2})\s+${monthNames}\s+(\d{4})\b`, 'i'));
+  m = fullText.match(new RegExp(`\\b(\\d{1,2})\\s+${monthNames}\\s+(\\d{4})\\b`, 'i'));
   if (m) {
     const d = m[1].padStart(2, '0');
     const moStr = m[2].toLowerCase();
@@ -274,31 +327,53 @@ function parseDateAndTime(fullText: string) {
   return { dateISO, timeHHMM, rawDate };
 }
 
-export async function analyzeReceipt(dataUrl: string) {
-  // Serialize OCR jobs to avoid concurrent recognizes on the same worker
-  const release = await workerMutex.lock();
+export interface AnalyzeReceiptOptions {
+  onProgress?: (progress: number) => void;
+}
+
+export async function analyzeReceipt(dataUrl: string, options: AnalyzeReceiptOptions = {}) {
+  const { onProgress } = options;
+  const worker = await pool.acquire();
+  
   try {
-    const w = await getWorker();
+    if (onProgress) onProgress(0.1);
 
     // 1) Low-res preprocess + recognize with TSV to get layout info
     const low = await preprocessImage(dataUrl, { maxWidth: 1000, binarize: false, enhanceContrast: true });
-    const lowRes = await w.recognize(low, {}, { text: true, tsv: true });
-    const fullText = String(lowRes.data?.text || '').trim();
-    const tsv = String(lowRes.data?.tsv || '');
+    
+    if (onProgress) onProgress(0.3);
 
-    // Parse tsv to extract word tokens with bounding boxes
-    const rows = tsv.split('\n').slice(1).map(l => l.trim()).filter(Boolean).map(line => {
-      const cols = line.split('\t');
-      const text = cols.slice(11).join('\t');
-      return {
-        text: text || '',
-        left: parseInt(cols[6] || '0', 10),
-        top: parseInt(cols[7] || '0', 10),
-        width: parseInt(cols[8] || '0', 10),
-        height: parseInt(cols[9] || '0', 10),
-        conf: parseFloat(cols[10] || '0')
-      };
-    });
+    const lowRes = await worker.recognize(low);
+    const fullText = String(lowRes.data?.text || '').trim();
+    
+    if (!fullText) {
+      throw new Error('Aucun texte détecté dans l\'image. Veuillez vérifier la qualité de la photo.');
+    }
+
+    if (onProgress) onProgress(0.6);
+
+    // Parse hocr to extract word tokens with bounding boxes
+    const hocr = lowRes.data?.hocr || '';
+    const wordRegex = /<span class=['"]ocrx_word['"][^>]*title=['"]bbox (\d+) (\d+) (\d+) (\d+)[^>]*>([^<]+)<\/span>/g;
+    const rows: Array<{text: string; left: number; top: number; width: number; height: number; conf: number}> = [];
+    
+    let match;
+    while ((match = wordRegex.exec(hocr)) !== null) {
+      const left = parseInt(match[1], 10);
+      const top = parseInt(match[2], 10);
+      const right = parseInt(match[3], 10);
+      const bottom = parseInt(match[4], 10);
+      const text = match[5];
+      
+      rows.push({
+        text,
+        left,
+        top,
+        width: right - left,
+        height: bottom - top,
+        conf: 90
+      });
+    }
 
     // helper: compute median line height for size signal
     const heights = rows.map(r => r.height).filter(h => h > 0);
@@ -323,7 +398,7 @@ export async function analyzeReceipt(dataUrl: string) {
       // position: normalized by image height (1 = bottom)
       const centerY = (r.top + (r.height || 0) / 2) || 0;
       const pos = imageHeight ? Math.max(0, Math.min(1, centerY / imageHeight)) : 0.5;
-      const position = pos; // higher => closer to bottom
+      const position = pos;
 
       // size: compare to median line height
       const sizeRatio = r.height ? r.height / Math.max(1, medianHeight) : 0.5;
@@ -340,10 +415,8 @@ export async function analyzeReceipt(dataUrl: string) {
 
       // compute weighted score from config
       const w = scoringConfig.amount.weights;
-      // raw score is additive using integer weights (some signals are 0..1 multipliers)
       let rawScore = (keyword * w.keyword) + (position * w.position) + (size * w.size) + (currency * w.currency) + (format * w.format) + (unique * w.unique);
       if (allCount > 1) rawScore += scoringConfig.amount.multiplePenalty;
-      // clamp to 0..100
       const score100 = Math.max(0, Math.min(100, Math.round(rawScore)));
 
       return {
@@ -369,14 +442,22 @@ export async function analyzeReceipt(dataUrl: string) {
       if (!isNaN(c.value)) candidates.push(c);
     }
 
-    // Fallback to text-only extraction if TSV produced nothing
+    // Fallback to text-only extraction if no structured candidates
     if (candidates.length === 0) {
       const numCandidates = findNumbers(fullText);
-      candidates = numCandidates.map((n: any) => ({ raw: n.raw, value: n.value, signals: {}, score100: Math.round(scoreAmountCandidate(n.raw, n.value, fullText)), bbox:null }));
+      candidates = numCandidates.map((n: any) => ({ 
+        raw: n.raw, 
+        value: n.value, 
+        signals: {}, 
+        score100: Math.round(scoreAmountCandidate(n.raw, n.value, fullText)), 
+        bbox: null 
+      }));
     }
 
     // Sort by score100
-    candidates.sort((a: any, b: any) => (b.score100 || b.score || 0) - (a.score100 || a.score || 0));
+    candidates.sort((a: any, b: any) => (b.score100 || 0) - (a.score100 || 0));
+
+    if (onProgress) onProgress(0.8);
 
     // 2) High-res pass on top candidate to confirm and refine
     if (candidates.length > 0 && candidates[0].bbox) {
@@ -385,22 +466,14 @@ export async function analyzeReceipt(dataUrl: string) {
         const crop = await cropImage(low, top.bbox, 20);
         const highPre = await preprocessImage(crop, { maxWidth: 1200, binarize: true, enhanceContrast: true });
 
-        try {
-          // Narrow recognition to digits and symbols to reduce errors
-          await w.setParameters?.({ tessedit_char_whitelist: '0123456789.,€$£' });
-        } catch (e) {
-          // setParameters may not be supported in some versions — ignore safely
-        }
-
-        const highRes = await w.recognize(highPre, {}, { text: true });
+        const highRes = await worker.recognize(highPre);
         const highText = String(highRes.data?.text || '').trim();
         const highNums = findNumbers(highText);
         if (highNums.length > 0) {
           const n = highNums.sort((a, b) => b.value - a.value)[0];
           top.raw = n.raw;
           top.value = n.value;
-          // recompute signals for top using its text
-          const recomputed = await computeAmountSignalsForRow({ text: n.raw, left: 0, top: 0, width: 0, height: 0 }, 1, (await loadImageFromDataUrl(highPre)).height);
+          const recomputed = await computeAmountSignalsForRow({ text: n.raw, left: 0, top: 0, width: 0, height: 0 }, 1, imageHeight);
           top.signals = recomputed.signals;
           top.score100 = recomputed.score100;
         }
@@ -423,8 +496,8 @@ export async function analyzeReceipt(dataUrl: string) {
         const parsed = new Date(parsedDate.dateISO + 'T00:00:00');
         dSignals.plausible = parsed <= new Date() ? 1 : 0;
       } catch (e) { dSignals.plausible = 0; }
-      dSignals.position = 0; // optional: could analyze row position if TSV available
-      dSignals.unique = 1; // simple heuristic for now
+      dSignals.position = 0;
+      dSignals.unique = 1;
       const wD = scoringConfig.date.weights;
       let rawD = (dSignals.keyword * wD.keyword) + (dSignals.format * wD.format) + (dSignals.plausible * wD.plausible) + (dSignals.position * wD.position) + (dSignals.unique * wD.unique);
       dateScore100 = Math.max(0, Math.min(100, Math.round(rawD)));
@@ -432,20 +505,25 @@ export async function analyzeReceipt(dataUrl: string) {
 
     const merchantGuess = guessMerchant(fullText);
 
+    if (onProgress) onProgress(1.0);
+
     const result = {
       text: fullText,
       merchant: merchantGuess,
       date: parsedDate.dateISO || null,
       time: parsedDate.timeHHMM || null,
       rawDate: parsedDate.rawDate || null,
+      amount: best?.value || null,
       dateScore100,
       candidates,
       best
     };
 
     return result;
+  } catch (error) {
+    throw error;
   } finally {
-    release();
+    pool.release(worker);
   }
 }
 
@@ -463,7 +541,6 @@ export async function suggestCategoryCandidates(fullText: string, merchant: stri
   const freq: Record<number, number> = {};
   for (const tx of merchantTx) {
     const catName = String(tx.category || tx.categorie || tx.category_name || tx.catego || '').trim();
-    // try to find matching category id from provided categories
     const found = categories.find(c => norm(c.name) === norm(catName) || norm(c.name).includes(norm(catName)) || norm(catName).includes(norm(c.name)));
     if (found) {
       freq[found.id_category] = (freq[found.id_category] || 0) + 1;
@@ -519,7 +596,7 @@ export async function suggestCategoryCandidates(fullText: string, merchant: stri
       const sn = norm(sname);
       const keyword = (textNorm.includes(sn) || merchantNorm.includes(sn)) ? 1 : 0;
       const classifier = merchantNorm.split(/\s+/).filter(Boolean).filter(t => sn.split(/\s+/).includes(t)).length > 0 ? 1 : 0;
-      const raw = (keyword * 0.7 + classifier * 0.3) * 100; // simple mix
+      const raw = (keyword * 0.7 + classifier * 0.3) * 100;
       subCandidates.push({ id_subcategory: s.id_subcategory, name: sname, score100: Math.round(Math.max(0, Math.min(100, raw))), signals: { keyword, classifier } });
     }
     subCandidates.sort((a, b) => b.score100 - a.score100);

@@ -23,12 +23,16 @@ try {
     return;
   }
 
-  // compute date range: last 3 complete months (exclude current month)
-  if ($annee && $mois) {
-    $monthStart = new DateTimeImmutable(sprintf('%04d-%02d-01', (int)$annee, (int)$mois));
-  } else {
-    $monthStart = new DateTimeImmutable(date('Y-m-01'));
-  }
+  // compute date range: use selected month (or current month if not selected)
+  // Always use at least the mois filter if provided, even without annee
+  $now = new DateTime();
+  $defaultAnnee = (int)$now->format('Y');
+  $defaultMois = (int)$now->format('m');
+  
+  $displayAnnee = $annee ? (int)$annee : $defaultAnnee;
+  $displayMois = $mois ? (int)$mois : $defaultMois;
+  
+  $monthStart = new DateTimeImmutable(sprintf('%04d-%02d-01', $displayAnnee, $displayMois));
   $rangeStart = $monthStart->sub(new DateInterval('P3M'))->format('Y-m-01');
   $rangeEnd = $monthStart->format('Y-m-01');
 
@@ -126,23 +130,14 @@ try {
   $resultSubs = [];
   foreach ($subs as $s) {
     $sid = (int)$s['id_subcategory'];
-    // prepare ordered months sums (explicit zeros for missing months)
-    $mSums = [];
-    foreach ($months as $m) {
-      $mSums[$m] = isset($monthly[$sid][$m]) ? (float)$monthly[$sid][$m] : 0.0;
-    }
-    $sum3 = array_sum($mSums);
-    $nonZeroCount = count(array_filter($mSums, function($v){ return $v > 0; }));
-
-    if ($avgMode === 'include_zero') {
-      $budget_auto = $sum3 / 3.0;
-    } else { // ignore_empty
-      $budget_auto = $nonZeroCount > 0 ? ($sum3 / $nonZeroCount) : 0.0;
+    // Only use manual budget; skip if not defined
+    $manual = isset($s['manual_budget']) && $s['manual_budget'] !== null ? (float)$s['manual_budget'] : null;
+    if ($manual === null) {
+      continue; // Skip subcategories without manual budget
     }
 
     $spent_this_month = isset($current[$sid]) ? (float)$current[$sid] : 0.0;
-    $manual = isset($s['manual_budget']) && $s['manual_budget'] !== null ? (float)$s['manual_budget'] : null;
-    $used_budget = $manual !== null ? $manual : $budget_auto;
+    $used_budget = $manual;
     $remaining = $used_budget - $spent_this_month;
     $percent_spent = $used_budget > 0 ? ($spent_this_month / $used_budget) * 100.0 : null;
 
@@ -152,12 +147,12 @@ try {
       'category_name' => $s['category_name'] ?? null,
       'name' => $s['name'],
       'manual_budget' => $manual,
-      'budget_auto' => round($budget_auto, 2),
+      'budget_auto' => null,
       'budget_used' => round($used_budget, 2),
       'spent_this_month' => round($spent_this_month, 2),
       'remaining' => round($remaining, 2),
       'percent_spent' => $percent_spent !== null ? round($percent_spent, 2) : null,
-      'months_sums' => $mSums,
+      'months_sums' => [],
       'months_with_data_count' => $nonZeroCount,
       'budget_source' => $manual !== null ? 'manual' : 'auto'
     ];
@@ -208,21 +203,14 @@ try {
   $resultCats = [];
   foreach ($cats as $c) {
     $cid = (int)$c['id_category'];
-    $mSumsC = [];
-    foreach ($months as $m) {
-      $mSumsC[$m] = isset($monthlyC[$cid][$m]) ? (float)$monthlyC[$cid][$m] : 0.0;
-    }
-    $sum3c = array_sum($mSumsC);
-    $nonZeroCountC = count(array_filter($mSumsC, function($v){ return $v > 0; }));
-    if ($avgMode === 'include_zero') {
-      $budget_auto = $sum3c / 3.0;
-    } else {
-      $budget_auto = $nonZeroCountC > 0 ? ($sum3c / $nonZeroCountC) : 0.0;
+    // Only use manual budget; skip if not defined
+    $manual = isset($c['manual_budget']) && $c['manual_budget'] !== null ? (float)$c['manual_budget'] : null;
+    if ($manual === null) {
+      continue; // Skip categories without manual budget
     }
 
     $spent_this_month = isset($currentC[$cid]) ? (float)$currentC[$cid] : 0.0;
-    $manual = isset($c['manual_budget']) && $c['manual_budget'] !== null ? (float)$c['manual_budget'] : null;
-    $used_budget = $manual !== null ? $manual : $budget_auto;
+    $used_budget = $manual;
     $remaining = $used_budget - $spent_this_month;
     $percent_spent = $used_budget > 0 ? ($spent_this_month / $used_budget) * 100.0 : null;
 
@@ -230,13 +218,13 @@ try {
       'id_category' => $cid,
       'name' => $c['name'],
       'manual_budget' => $manual,
-      'budget_auto' => round($budget_auto, 2),
+      'budget_auto' => null,
       'budget_used' => round($used_budget, 2),
       'spent_this_month' => round($spent_this_month, 2),
       'remaining' => round($remaining, 2),
       'percent_spent' => $percent_spent !== null ? round($percent_spent, 2) : null,
-      'months_sums' => $mSumsC,
-      'months_with_data_count' => $nonZeroCountC,
+      'months_sums' => [],
+      'months_with_data_count' => 0,
       'budget_source' => $manual !== null ? 'manual' : 'auto'
     ];
   }

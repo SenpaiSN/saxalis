@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : sql107.infinityfree.com
--- Généré le :  Dim 04 jan. 2026 à 02:59
+-- Généré le :  sam. 07 fév. 2026 à 09:34
 -- Version du serveur :  11.4.9-MariaDB
 -- Version de PHP :  7.2.22
 
@@ -522,6 +522,7 @@ CREATE TABLE `objectif_atteints` (
   `id_subcategory` int(11) NOT NULL,
   `name` varchar(100) DEFAULT NULL,
   `montant_objectif` decimal(10,2) NOT NULL,
+  `montant_objectif_eur` decimal(10,2) NOT NULL,
   `date_creation` timestamp NOT NULL DEFAULT current_timestamp(),
   `date_atteint` date DEFAULT NULL,
   `total_collected` decimal(14,2) DEFAULT NULL,
@@ -533,8 +534,8 @@ CREATE TABLE `objectif_atteints` (
 -- Déchargement des données de la table `objectif_atteints`
 --
 
-INSERT INTO `objectif_atteints` (`id_objectif_atteint`, `id_objectif`, `user_id`, `id_subcategory`, `name`, `montant_objectif`, `date_creation`, `date_atteint`, `total_collected`, `progress_pct`, `nb_versements`) VALUES
-(3, 3, 7, 353, 'Tontine', '714.00', '2025-12-27 23:09:07', '2025-12-02', '793.55', '100.00', 11);
+INSERT INTO `objectif_atteints` (`id_objectif_atteint`, `id_objectif`, `user_id`, `id_subcategory`, `name`, `montant_objectif`, `montant_objectif_eur`, `date_creation`, `date_atteint`, `total_collected`, `progress_pct`, `nb_versements`) VALUES
+(3, 3, 7, 353, 'Tontine', '714.00', '714.00', '2024-12-27 23:09:07', '2025-12-02', '793.55', '100.00', 11);
 
 -- --------------------------------------------------------
 
@@ -547,19 +548,104 @@ CREATE TABLE `objectif_crees` (
   `user_id` int(11) NOT NULL,
   `id_subcategory` int(11) NOT NULL,
   `montant` decimal(10,2) NOT NULL,
+  `Montant_eur` decimal(10,2) NOT NULL,
   `date_depot` timestamp NOT NULL DEFAULT current_timestamp(),
-  `automatique` tinyint(1) DEFAULT 0
+  `automatique` tinyint(1) DEFAULT 0,
+  `date_cible` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `objectif_crees`
 --
 
-INSERT INTO `objectif_crees` (`id_objectif`, `user_id`, `id_subcategory`, `montant`, `date_depot`, `automatique`) VALUES
-(1, 7, 350, '5400.00', '2025-12-26 06:36:31', 0),
-(2, 7, 351, '1000.00', '2025-12-26 06:36:31', 0),
-(3, 7, 354, '500.00', '2025-12-31 16:38:40', 0),
-(4, 7, 357, '2000.00', '2026-01-02 17:07:49', 0);
+INSERT INTO `objectif_crees` (`id_objectif`, `user_id`, `id_subcategory`, `montant`, `Montant_eur`, `date_depot`, `automatique`, `date_cible`) VALUES
+(1, 7, 350, '5400.00', '5400.00', '2025-12-26 06:36:31', 0, '2027-01-24'),
+(3, 7, 354, '500.00', '500.00', '2025-12-23 16:38:40', 0, '2026-05-30'),
+(4, 7, 357, '2000.00', '2000.00', '2026-01-02 17:07:49', 0, '2026-12-01'),
+(5, 15, 362, '500.00', '500.00', '2026-01-29 10:54:39', 0, '2026-06-25'),
+(6, 7, 363, '2500.00', '0.00', '2026-02-06 21:11:23', 0, '2027-01-27');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `ocr_feedback`
+--
+
+CREATE TABLE `ocr_feedback` (
+  `id_feedback` int(10) UNSIGNED NOT NULL,
+  `id_utilisateur` int(10) UNSIGNED DEFAULT NULL,
+  `receipt_text_hash` varchar(64) NOT NULL,
+  `redacted_text` varchar(500) DEFAULT NULL,
+  `merchant` varchar(255) DEFAULT NULL,
+  `invoice_hash` varchar(64) DEFAULT NULL,
+  `suggested_amount` decimal(12,2) DEFAULT NULL,
+  `suggested_category` varchar(255) DEFAULT NULL,
+  `applied_amount` decimal(12,2) DEFAULT NULL,
+  `applied_category` varchar(255) DEFAULT NULL,
+  `action` enum('accepted','overridden','rejected') NOT NULL,
+  `candidates` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL
+) ;
+
+--
+-- Déchargement des données de la table `ocr_feedback`
+--
+
+INSERT INTO `ocr_feedback` (`id_feedback`, `id_utilisateur`, `receipt_text_hash`, `redacted_text`, `merchant`, `invoice_hash`, `suggested_amount`, `suggested_category`, `applied_amount`, `applied_category`, `action`, `candidates`, `meta`, `created_at`) VALUES
+(1, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"apply_amount_button\"}', '2026-01-17 17:00:56'),
+(2, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-17 17:01:20'),
+(3, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-17 17:06:46'),
+(4, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-17 17:06:49'),
+(5, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-17 17:09:11'),
+(6, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-17 17:11:03'),
+(7, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-17 17:11:43'),
+(8, 7, 'cab58712491e123deb3afaf28172151d717b1f3ecafb171d9519f2fea200391d', 'Carrefour\nmarket\nMARKET LE MANS BONNETABLE\nTél: 02 43 81 64 60\nLun. au Sam.: 08:30 à 20:00\nDim.: 09:00 à 12:30\n28/12/2025 à 11h35\nTVA Produit QTExP.U. Montant €\n5.5%  BAGUETTE 250G 1x0.59 0.59\n5.5%  BAGUETTE 250G 1x0.59 0.59\n5.5%  LIPTON YELLOW KENY 1x1.19 1.19\n5.5%  MEGACHOK VANI 500G 1x1.50 1.50\n5.5% _1KG RIZ LONG BLANC 1x1.25 1.25\n5.5% 1KG FROMAGE BLANC 1x1.79 1.79\n5.5% ORANGE 750G 1x0.99 0.99\nTotal à payer 7.90€\nPayé par\nCarte bancaire 7.90€\nMa carte Club Carrefour\n91357200007444', 'Carrefour', 'bd614eddf93ca8b34517c2ca805186585f05cf6e7e5bec62fa10b604573bde11', '7.90', NULL, '7.90', NULL, 'accepted', '[{\"raw\":\"7.90\",\"value\":7.9000000000000003552713678800500929355621337890625,\"score100\":69},{\"raw\":\"7.90\",\"value\":7.9000000000000003552713678800500929355621337890625,\"score100\":69},{\"raw\":\"7.90\",\"value\":7.9000000000000003552713678800500929355621337890625,\"score100\":69},{\"raw\":\"7.90\",\"value\":7.9000000000000003552713678800500929355621337890625,\"score100\":69},{\"raw\":\"1.79\",\"value\":1.79000000000000003552713678800500929355621337890625,\"score100\":67}]', '{\"via\":\"confirm_button\"}', '2026-01-17 17:13:41'),
+(9, 7, 'cab58712491e123deb3afaf28172151d717b1f3ecafb171d9519f2fea200391d', 'Carrefour\nmarket\nMARKET LE MANS BONNETABLE\nTél: 02 43 81 64 60\nLun. au Sam.: 08:30 à 20:00\nDim.: 09:00 à 12:30\n28/12/2025 à 11h35\nTVA Produit QTExP.U. Montant €\n5.5%  BAGUETTE 250G 1x0.59 0.59\n5.5%  BAGUETTE 250G 1x0.59 0.59\n5.5%  LIPTON YELLOW KENY 1x1.19 1.19\n5.5%  MEGACHOK VANI 500G 1x1.50 1.50\n5.5% _1KG RIZ LONG BLANC 1x1.25 1.25\n5.5% 1KG FROMAGE BLANC 1x1.79 1.79\n5.5% ORANGE 750G 1x0.99 0.99\nTotal à payer 7.90€\nPayé par\nCarte bancaire 7.90€\nMa carte Club Carrefour\n91357200007444', 'Carrefour', 'bd614eddf93ca8b34517c2ca805186585f05cf6e7e5bec62fa10b604573bde11', '7.90', NULL, '7.90', NULL, 'accepted', '[{\"raw\":\"7.90\",\"value\":7.9000000000000003552713678800500929355621337890625,\"score100\":69},{\"raw\":\"7.90\",\"value\":7.9000000000000003552713678800500929355621337890625,\"score100\":69},{\"raw\":\"7.90\",\"value\":7.9000000000000003552713678800500929355621337890625,\"score100\":69},{\"raw\":\"7.90\",\"value\":7.9000000000000003552713678800500929355621337890625,\"score100\":69},{\"raw\":\"1.79\",\"value\":1.79000000000000003552713678800500929355621337890625,\"score100\":67}]', '{\"via\":\"confirm_button\"}', '2026-01-17 17:14:29'),
+(10, 7, '0d8e24d6bcf193525c26cdfbfa5105672fc1eb2d2765e24a994997d19b7773e8', 'Carrefour\nmarket\nMARKET LE MANS BONNETABLE\nTVA Produit aTExPU. Montante\nleon x 52000\nTotal à payer 14.97€\nPayé par\nmes me\nRE isa Ce Carrotour\nDane\nTaux TVA Total produits | dontTVA\nTotal TvA tas7e o7se\n16.01.26 18-37 8137 29 3485 0610', 'Carrefour', '5c337237bf1593895c221f312870a1000f74334f85cbbeaa6507df6cde6953a9', '14.97', NULL, '14.97', NULL, 'accepted', '[{\"raw\":\"14.97\",\"value\":14.9700000000000006394884621840901672840118408203125,\"score100\":71},{\"raw\":\"16.01\",\"value\":16.010000000000001563194018672220408916473388671875,\"score100\":71},{\"raw\":\"-37 813\",\"value\":-37813,\"score100\":71},{\"raw\":\"29 348\",\"value\":29348,\"score100\":71},{\"raw\":\"5 061\",\"value\":5061,\"score100\":67}]', '{\"via\":\"confirm_button\"}', '2026-01-17 18:27:57'),
+(11, 7, '0d8e24d6bcf193525c26cdfbfa5105672fc1eb2d2765e24a994997d19b7773e8', 'Carrefour\nmarket\nMARKET LE MANS BONNETABLE\nTVA Produit aTExPU. Montante\nleon x 52000\nTotal à payer 14.97€\nPayé par\nmes me\nRE isa Ce Carrotour\nDane\nTaux TVA Total produits | dontTVA\nTotal TvA tas7e o7se\n16.01.26 18-37 8137 29 3485 0610', 'Carrefour', '5c337237bf1593895c221f312870a1000f74334f85cbbeaa6507df6cde6953a9', '14.97', NULL, '14.97', NULL, 'accepted', '[{\"raw\":\"14.97\",\"value\":14.9700000000000006394884621840901672840118408203125,\"score100\":71},{\"raw\":\"16.01\",\"value\":16.010000000000001563194018672220408916473388671875,\"score100\":71},{\"raw\":\"-37 813\",\"value\":-37813,\"score100\":71},{\"raw\":\"29 348\",\"value\":29348,\"score100\":71},{\"raw\":\"5 061\",\"value\":5061,\"score100\":67}]', '{\"via\":\"confirm_button\"}', '2026-01-17 18:37:28'),
+(12, 7, '7f02e0e9032fcc45bbad7fffaa2c520755b902cf88cff62bb4bb53d65a812e27', '2400 0° Me S PE ä : ; eu,\nsem RP = me fe,\nme “ pd 5 &lt;a Ma\nrar agp + a a PE , 0\nue Cie ee 15 a. * Se\n …. , 200 ..- x 22\n. 6. . 1 .\n— ? ee Be A\nk _ , »\nE à ti\nee\na mouILF\nAdresse de retour en cas de non distribution :\nZI Ouest - Rue Ettore Bugatti\nNe pas écrire à cette adresse\nus ue .\na. 1 , 8 1 ve', '2400 0° Me S PE ä : ; eu,', 'f86bca2c27c9a913549505804aec9deb073888a41d0d2af891be7a2054043929', '240.00', NULL, '240.00', NULL, 'accepted', '[{\"raw\":\"240\",\"value\":240,\"score100\":11},{\"raw\":\"200\",\"value\":200,\"score100\":11},{\"raw\":\"15\",\"value\":15,\"score100\":6},{\"raw\":\"22\",\"value\":22,\"score100\":6},{\"raw\":\"5\",\"value\":5,\"score100\":4}]', '{\"via\":\"confirm_button\"}', '2026-01-25 08:40:22'),
+(13, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 11:24:21'),
+(14, 7, '846fc80a4eb21c2ded7d5b66972816e02572ea85568e74aa3341831d397824bf', '21:42 a\n‘ +\nCN Q couscoussier (e)\ndu produit.\nSponsorisé\nVENTION Couscoussier Induction\n2L, Petit Cuiseur Vapeur 18 cm,\nCuit Vapeur Inox\n; LA 4,3 A#k ki (803)\nN …— Plus de 50 achetés au cours du mois\n| | dernier\n; | 3298 €\nLivraison GRATUITE lun. 3 nov. dès\n35 € d&#039;achats expédiés par Amazon\nOu livraison accélérée dim. 2 nov.\nEX Ajouter au panier\nSponsorisé\nVEVOR Cuiseur Vapeur à 3 Étages\ns- 53 28 cm Cuit Vapeur avec 1\n2 == ; ;\n= 224 » Marmite de 8 L 1 Panier 2...\nK À ', '21:42 a', 'f947922f7cef10128c83751df027fb42cf00198cbaeea06a58dbd676499caa9f', '803.00', NULL, '803.00', NULL, 'accepted', '[{\"raw\":\"803\",\"value\":803,\"score100\":13},{\"raw\":\"329\",\"value\":329,\"score100\":12},{\"raw\":\"459\",\"value\":459,\"score100\":12},{\"raw\":\"224\",\"value\":224,\"score100\":11},{\"raw\":\"190\",\"value\":190,\"score100\":11}]', '{\"via\":\"confirm_button\"}', '2026-01-25 11:32:30'),
+(15, 7, 'b2fac7e25f036071ea9458bfae780fbf2b27a4abe9a344e6ac36c4d8cf0f1f2a', '11:45 u5GW)\n4 369,01 EUR\nDont plus-values estimées : + 11,72 EUR\nestimation au 16/07/2025\nMon épargne Ajouter d&#039;autres comptes\nÉpargne\n4 369,01 EUR\nDont plus-values estimées + 11,72 EUR\nÉpargne nette estimée © 4 366,99 EUR\nPlan d&#039;épargne groupe Plan d&#039;épargne retraite\nÉvolution de mon épargne\n&gt;\n5000\n2500\n0\nSEPT. JANV. MAI\nil\nÉpargne\n- - --z—_—_—_— EE', '11:45 u5GW)', 'f187ed06a76a73f4decbb6f4a7d514c0d1ed9a30e40f8506d191580e4f189687', '4369.01', NULL, '4369.01', NULL, 'accepted', '[{\"raw\":\"4 369,01\",\"value\":4369.010000000000218278728425502777099609375,\"score100\":32},{\"raw\":\"4 369,01\",\"value\":4369.010000000000218278728425502777099609375,\"score100\":32},{\"raw\":\"4 366,99\",\"value\":4366.989999999999781721271574497222900390625,\"score100\":32},{\"raw\":\"11,72\",\"value\":11.7200000000000006394884621840901672840118408203125,\"score100\":20},{\"raw\":\"11,72\",\"value\":11.7200000000000006394884621840901672840118408203125,\"score100\":20}]', '{\"via\":\"confirm_button\"}', '2026-01-25 11:37:55'),
+(16, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 13:09:56'),
+(17, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 13:10:46'),
+(18, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 13:23:45'),
+(19, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 13:24:33'),
+(20, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 13:26:44'),
+(21, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 13:29:07'),
+(22, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 14:20:24'),
+(23, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 14:23:03'),
+(24, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 14:27:37'),
+(25, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 14:31:46'),
+(26, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 14:32:52'),
+(27, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 14:33:24'),
+(28, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 14:53:37'),
+(29, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 15:03:10'),
+(30, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 15:56:09'),
+(31, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 15:59:38'),
+(32, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\"}', '2026-01-25 16:03:10'),
+(33, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 16:04:53'),
+(34, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 16:10:46'),
+(35, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 16:13:17'),
+(36, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 16:15:28'),
+(37, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 16:15:47'),
+(38, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 16:20:20'),
+(39, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 16:25:35'),
+(40, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 16:28:10'),
+(41, 7, '2f0128bb88115ff35e39d12d7ef190ca13454a9e0b25a56e52848f972ea1c100', 'cod = [\nAUX MILLES SAVEURS\nM3 BD WINSTON CHURCHILL\n72100 LE MANS ;\nTICKET DE VENTE = à ’\nV-T } @PSRN\nDATE 08/10/2025 - 18:35) n° 172541\n1 TL. ; x ji\nArétcte / Ote 15-Pri/ dontant |\nnerveux de GIte 4 ; {\n5,5% 1,842 kg&#039;0 14,80 = 28,94 1/1\no…———— 2 M\nDAT. “un .\nIOnarn9 2UNA2 1sige% a Cu à\ni EN | ;\nEn espèce: æ va\nÀ rendre: $ à\nTVA inclus au taux indie * KM à\n4\nLee ve 1\nki w\nSosog co RS KaeV | | I, ;\nee\nSionature:_nilit® ee 1 1, 18\n© &#039;sérieY2pndtee TT 1 0\ny _;r,.,', 'cod = [', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"981\",\"value\":981,\"score100\":14},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"541\",\"value\":541,\"score100\":13}]', '{\"via\":\"confirm_button\"}', '2026-01-25 16:39:56'),
+(42, 7, 'c3d39471a92e46a671f780b9f5a34a491378993c21ca97a5f9e105a6424eb487', ': G@æ)\n)\n19:50 ll 4\nVous avez envoyé 426,86 € à Adama Diaw\nBonjour Omar Ndiongue,\nVotre transfert d&#039;argent est arrivé sur le compte Wave Mobile Money de Adama\nDiaw!\nVoici le reçu de la transaction :\nSENDWAVE\nR d A Sendwave SA\n‘eçu de paiement Rue du Commerce 31\nBrussels\nCe reçu ne constitue pas un 1000\njustificatif de livraison de l&#039;argent au Belgique\nétuis Tel.0 800 90 94 13\né www sendwave com\nNuméro de client: SW8087\nEXPÉDITEUR TRANSFERT BÉNÉFICIAIRE INFOS SUR LA BAN', ': G@æ)', '7fa84be951adba6353ad156be44d0e8d01244739196a36b6515d06a661fb2a5b', '428.35', NULL, '428.35', NULL, 'accepted', '[{\"raw\":\"428.35\",\"value\":428.3500000000000227373675443232059478759765625,\"score100\":77},{\"raw\":\"967\",\"value\":967,\"score100\":64},{\"raw\":\"687\",\"value\":687,\"score100\":63},{\"raw\":\"+221\",\"value\":221,\"score100\":61},{\"raw\":\"-260\",\"value\":-260,\"score100\":61}]', '{\"via\":\"confirm_button\"}', '2026-01-26 18:50:45'),
+(43, 7, '4aa0f6711a53da83ffc4313c436bffebd73b7e1c48e027acb5ceba2c581353f3', '°\n)\n19:54 ail 4G @)\nVous avez envoyé 609,79 € à Aziz Ndiongue\nBonjour Omar Ndiongue,\nVotre transfert d&#039;argent est arrivé sur le compte Wave Mobile Money de Aziz\nNdiongue !\nVoici le reçu de la transaction :\nSENDWAVE\nfecu de palement Sendwave SA\neçu de paiemen Rue du Commerce 31\nBrussels\nCe reçu ne constitue pas un 1000\njustificatif de livraison de l&#039;argent au Belgique\nbénéficiaire. Tel. 0 800 90 94 13\niciaire. www sendwave com\nNuméro de client: SW8087\nEXPÉDITEUR TRANSFERT B', '19:54 ail 4G @)', '886c92279939895ec32523fb57b2bafd9f03efa9424409eee96c1d9619574b71', '0.00', NULL, '0.00', NULL, 'accepted', '[{\"raw\":\"0.00\",\"value\":0,\"score100\":65},{\"raw\":\"0.00\",\"value\":0,\"score100\":65},{\"raw\":\"997\",\"value\":997,\"score100\":64},{\"raw\":\"611\",\"value\":611,\"score100\":63},{\"raw\":\"400\",\"value\":400,\"score100\":62}]', '{\"via\":\"confirm_button\"}', '2026-01-26 18:56:23'),
+(44, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\",\"ocr_source\":\"tesseract\"}', '2026-01-26 20:27:13'),
+(45, 7, '4aa0f6711a53da83ffc4313c436bffebd73b7e1c48e027acb5ceba2c581353f3', '°\n)\n19:54 ail 4G @)\nVous avez envoyé 609,79 € à Aziz Ndiongue\nBonjour Omar Ndiongue,\nVotre transfert d&#039;argent est arrivé sur le compte Wave Mobile Money de Aziz\nNdiongue !\nVoici le reçu de la transaction :\nSENDWAVE\nfecu de palement Sendwave SA\neçu de paiemen Rue du Commerce 31\nBrussels\nCe reçu ne constitue pas un 1000\njustificatif de livraison de l&#039;argent au Belgique\nbénéficiaire. Tel. 0 800 90 94 13\niciaire. www sendwave com\nNuméro de client: SW8087\nEXPÉDITEUR TRANSFERT B', '19:54 ail 4G @)', '886c92279939895ec32523fb57b2bafd9f03efa9424409eee96c1d9619574b71', '0.00', NULL, '0.00', NULL, 'accepted', '[{\"raw\":\"0.00\",\"value\":0,\"score100\":65},{\"raw\":\"0.00\",\"value\":0,\"score100\":65},{\"raw\":\"997\",\"value\":997,\"score100\":64},{\"raw\":\"611\",\"value\":611,\"score100\":63},{\"raw\":\"400\",\"value\":400,\"score100\":62}]', '{\"via\":\"confirm_button\",\"ocr_source\":\"tesseract\"}', '2026-01-26 20:30:40'),
+(46, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\",\"ocr_source\":\"tesseract\"}', '2026-01-26 20:33:45'),
+(47, 7, '01daf43706d0f07d70c2e83ca63c0bcf955e676b0cea9001f7b84aad64cbe67a', '= 3 | ‘\nAUX MILLES SAVEURS\n63 BD WINSTON CHURCHILL\n72100 LE MANS | ;\nTICKET DE VENTE _ ;‘\n| afRN\nDIE O9A0/8E 16:35 14 st\ndar Ge ;\nArticle Qté TP©Prix/ Hontant 1!\nnerveux de GIte Fe 1 F\n5,5% 1,942 kg} 14,80 = = 28,94 10! (Lai\nm——— I À\nMATE da auaziid$ 8\nJONdn4 2KHA2 1sia8 ë EU (8\nAl\nEn espèce: æ 18\nk rendre: 8 0\nTVA inclus au taux indie + ‘ 1080 LA\nTau otalH! | Na J } a\nui A 2 ;\nSignature:-ri ie\n| Né Série ENS 000\n-, males ue v\n1) ven 0 &quot;6. |.\n| MERCI ET. À à EN\n| ie ??', '= 3 | ‘', '5bb7a57c5b16977416336e1919959e81ec081ec5d21c49b31a5fd7c2f62087f3', '28.94', NULL, '28.94', NULL, 'accepted', '[{\"raw\":\"28,94\",\"value\":28.940000000000001278976924368180334568023681640625,\"score100\":22},{\"raw\":\"14,80\",\"value\":14.800000000000000710542735760100185871124267578125,\"score100\":21},{\"raw\":\"721\",\"value\":721,\"score100\":13},{\"raw\":\"108\",\"value\":108,\"score100\":9},{\"raw\":\"63\",\"value\":63,\"score100\":8}]', '{\"via\":\"confirm_button\",\"ocr_source\":\"tesseract\"}', '2026-01-26 20:43:32'),
+(48, 7, '09d2be60c1a157c468272754b3d1b69821a66e9338d22d292e4dfce44ed0f448', '— Ticket Ô\nCOVEA LE MANS CALIFORNIE\nTicket du 27/01/2026\n08:26:22\nTOTAL 60,00 €\nPAIEMENT 60,00 €\n\nOmar NDIONGUE\nANCIEN SOLDE 5,65 €\nSOLDE 65,65 €\nN. transaction 17484\n27/01/2026 08:26:22 (CONVENTION)\nCle 2-SERV. : -CAISSE 5-NOTE 17484/1\nAU REVOIR ET MERCI\nELIOR RESTAURATION FRANCE\n9-11 Allée DE L&#039;ARCHE 92032 Paris la Défense\nCEDEX\nSIRET : 66 202 519 660 347\nNAF :5629A\nTVA : FR1I8662025196', '— Ticket Ô', '8df0a615ef6e1c37725a9498b195c371c28efde271d5e599d7f36684b7168a4a', '60.00', NULL, '60.00', NULL, 'accepted', '[{\"raw\":\"60,00\",\"value\":60,\"score100\":73},{\"raw\":\"60,00\",\"value\":60,\"score100\":73},{\"raw\":\"66 202 519 660 347\",\"value\":66202519660347,\"score100\":64},{\"raw\":\"202\",\"value\":202,\"score100\":61},{\"raw\":\"202\",\"value\":202,\"score100\":61}]', '{\"via\":\"confirm_button\",\"ocr_source\":\"tesseract\"}', '2026-01-27 07:28:31'),
+(49, 7, '215891ae6360ca83cee89eaec89016ab0da64ef9b4e9f3a87ee371c5fdbd8633', 'Vous avez envoyé 68,60 € à Adama Diaw\nBonjour Omar Ndiongue,\nVotre transfert d&#039;argent est arrivé sur le compte Wave Mobile Money de Adama\nDiaw !\nVoici le reçu de la transaction :\nSENDWAVE\nreu ae nu , Sendwave SA\neçu de paiement Rue du Commerce 31\nBrussels\nCe reçu ne constitue pas un 1000\njustificatif de livraison de l&#039;argent au Belgique\npure Tel.0 800 90 94 13\nwww sendivave com\nNuméro de client: SWB087\nEXPÉDITEUR TRANSFERT BÉNÉFICIAIRE INFOS SUR LA BANQUE\nNom de l&#039;exp?', 'Vous avez envoyé 68,60 € à Adama Diaw', 'e699a1317d14107f3430d5235d36b0a92ced75380ec4403f3f04387250136f76', '8221.00', NULL, '8221.00', NULL, 'accepted', '[{\"raw\":\"8 221\",\"value\":8221,\"score100\":68},{\"raw\":\"0.00\",\"value\":0,\"score100\":65},{\"raw\":\"700\",\"value\":700,\"score100\":63},{\"raw\":\"776\",\"value\":776,\"score100\":63},{\"raw\":\"687\",\"value\":687,\"score100\":63}]', '{\"via\":\"confirm_button\",\"ocr_source\":\"tesseract\"}', '2026-01-27 18:33:05'),
+(50, 7, '55f3b7e0c42c08606114667ee6a3c92830e9f7283f3867792af624a4e5d61349', 'Vous avez envoyé 22,87 € à Aichatou Ndiongue\nBonjour Omar Ndiongue,\nVotre transfert d&#039;argent est arrivé sur le compte Wave Mobile Money de\nAichatou Ndiongue !\nVoici le reçu de la transaction :\nSENDWAVE\në Sendwave SA\nReçu de paiement Rue du Commerce 31\nBrussels\nCe reçu ne constitue pas un 1000\njustificatif de livraison de l&#039;argent au Belgique\nTel 0 800 90 94 13\nbénéficiaire. www.sendwave.com\nNuméro de client: SW8087\nEXPÉDITEUR TRANSFERT BÉNÉFICIAIRE INFOS SUR LA BANQUE\nNo', 'Vous avez envoyé 22,87 € à Aichatou Ndiongue', 'd056d9eae99d9e104ce32a33f8d931cb1c0c309d07eee60e559236fe36046f10', '725.00', NULL, '725.00', NULL, 'accepted', '[{\"raw\":\"725\",\"value\":725,\"score100\":63},{\"raw\":\"243\",\"value\":243,\"score100\":61},{\"raw\":\"+221\",\"value\":221,\"score100\":61},{\"raw\":\"-260\",\"value\":-260,\"score100\":61},{\"raw\":\"128\",\"value\":128,\"score100\":60}]', '{\"via\":\"confirm_button\",\"ocr_source\":\"tesseract\"}', '2026-01-28 12:33:21'),
+(51, 7, '6b216bfab81c50322927fdb3e9d4a8f234703c1bfaaf8b8e600d1918adc3ef91', '23:16 ul 7 œ)\n= °\n&lt; ©\nBOUTIQUE : Mon compte formation\nAdresse URL : https://www.\nmoncompteformation.gouv.fr\nBonjour,\nCet e-mail confirme que nous venons\nd&#039;enregistrer votre demande de paiement de\n103,20 EUR pour votre dossier n° 421503342246\nsur Mon compte formation.\nDétails du paiement\nIdentifiant du marchand : 29303747\nNuméro de transaction : 784007\nRéférence commande : 421503342246\nDate / Heure : 28/01/2026 / 23:14:02\n(=)\n; : CARTE BANCAIRE\nMoyen de paiement Visa\nNuméro de ca', '23:16 ul 7 œ)', 'a3a54c543eb7475e2706da8a167a3e37d27e072d78a32e36da15040b598af210', '880.00', NULL, '880.00', NULL, 'accepted', '[{\"raw\":\"880\",\"value\":880,\"score100\":64},{\"raw\":\"602\",\"value\":602,\"score100\":63},{\"raw\":\"348\",\"value\":348,\"score100\":62},{\"raw\":\"289\",\"value\":289,\"score100\":61},{\"raw\":\"126\",\"value\":126,\"score100\":60}]', '{\"via\":\"confirm_button\"}', '2026-01-28 22:47:54'),
+(52, 7, '972fa4a5cf6780c29bde65d33baeacf4f1c255871a23871a5dfd4ffdfdd40d97', 'MARKET LE MANS BONNETABLE\nTél: 02 43 81 64 60\nLun. au Sam: 08:30 à 20:00\nDim.: 09:00 à 12:30\n30/01/2026 à 13h00\nTVA Produit QTExP.U. Montant €\n5.5% POULET HALAL CRF 1x8.03 8.03\n1.788kg x 4.49@kg\n5,5%  SAUCISDELICE 1x1.99 1.99\n5.5% 370G TORTIL.BLE WR 1x 2.49 2.49\n5.5% 470G MAYONNAISE SI 1x1.45 1.45\n5.5% 1KG FROMAGE BLANC 1x1.79 1.79\n5.5% 140G AIL SEMOULE 1x3.15 3.15\n5.5% X25 THE VERT MENTH 1x0.79 0.79\n5.5% 1KG RIZ LONG BLANC 1x1.25 1.25\n5.5% 1KG RIZ LONG BLANC 1x1.25 1.25\n5.5% 340G SCE SAMO', 'MARKET LE MANS BONNETABLE', '423ac88f8a1fb5f596ef4edf6e902d63ef715f06843cb508a0330d48f97572c6', '30.39', NULL, '30.39', NULL, 'accepted', '[{\"raw\":\"30.39\",\"value\":30.3900000000000005684341886080801486968994140625,\"score100\":72},{\"raw\":\"25.00\",\"value\":25,\"score100\":72},{\"raw\":\"30.39\",\"value\":30.3900000000000005684341886080801486968994140625,\"score100\":72},{\"raw\":\"30.39\",\"value\":30.3900000000000005684341886080801486968994140625,\"score100\":72},{\"raw\":\"8.03\",\"value\":8.0299999999999993605115378159098327159881591796875,\"score100\":69}]', '{\"via\":\"confirm_button\"}', '2026-01-30 13:37:07'),
+(53, 7, '70b2fa16551bfaabec08fd0a00ec19212e0e638a811b2be59d349d043d051804', 'Vous avez envoyé 7,62 € à Pape Sidy\nBonjour Omar Ndiongue,\nVotre transfert d&#039;argent est arrivé sur le compte Wave Mobile Money de Pape\nsidy !\nVoici le reçu de la transaction :\nSENDWAVE\nR d = t Sendwave SA\neçu de paiemen Rue du Commerce 31\nBrussels\nCe reçu ne constitue pas un 1000\njustificatif de livraison de l&#039;argent au Belgique\nbénéficiaire. por cata\nwven sendwave com\nNuméro de client: SWB087\nEXPÉDITEUR TRANSFERT BÉNÉFICIAIRE INFOS SUR LA BANQUE\nNom de l&#039;expéditeur', 'Vous avez envoyé 7,62 € à Pape Sidy', 'e03fe2e0335e141cc985dcb6fa4762ca446b32ad0c35329c5a71a7f5dab32122', '768.00', NULL, '768.00', NULL, 'accepted', '[{\"raw\":\"768\",\"value\":768,\"score100\":63},{\"raw\":\"567\",\"value\":567,\"score100\":63},{\"raw\":\"830\",\"value\":830,\"score100\":63},{\"raw\":\"500\",\"value\":500,\"score100\":62},{\"raw\":\"+221\",\"value\":221,\"score100\":61}]', '{\"via\":\"confirm_button\"}', '2026-02-03 19:14:21'),
+(54, 7, '02c6bc401287c6c7820f6a8b20dd7fecf001904e6aa04f5b181f0a22b54bc52e', 'Vous avez envoyé 7,62 € à Fatou Diassy\nBonjour Omar Ndiongue,\nVotre transfert d&#039;argent est arrivé sur le compte Wave Mobile Money de Fatou\nDiassy !\nVoici le reçu de la transaction :\nSENDWAVE\nA Sendwave SA\nReçu de paiement Rue du Commerce 31\nBrussels\nCe reçu ne constitue pas un 1000\njustificatif de livraison de l&#039;argent au Belgique\narsrnee Tel. 800 90 94 13\ni www SEndvave com\nNuméro de client: SWB087\nEXPÉDITEUR TRANSFERT BÉNÉFICIAIRE INFOS SUR LA BANQUE\nNom de l&#039;expédi', 'Vous avez envoyé 7,62 € à Fatou Diassy', '7cb415981c9e9e8b3ed5d58b7c884c9cf6b6938941c499e04bd17a212b94ae52', '911421.00', NULL, '911421.00', NULL, 'accepted', '[{\"raw\":\"911 421\",\"value\":911421,\"score100\":77},{\"raw\":\"0.00\",\"value\":0,\"score100\":65},{\"raw\":\"904\",\"value\":904,\"score100\":64},{\"raw\":\"785\",\"value\":785,\"score100\":63},{\"raw\":\"642\",\"value\":642,\"score100\":63}]', '{\"via\":\"confirm_button\"}', '2026-02-03 19:15:42'),
+(55, 7, 'ce11d8d38cd50e58e2d143ac43bbd43937756af4216b90346cf38810b70d882e', 'MARKET LE MANS BONNETABLE\nTét 024381 6460\nLun. au Sam: 08:30 à 20:00\nim: 09:00 à 12:30\n07/02/2026 à 12h41\nTVA Produit QTExP.U. Montant €\n200% BTE 110 MOUCHOIR C 1x135 135\n55% 1756 BOUDOIRS CRF 1x139 139\n55% 175 BOUDOIRS CRF 1x139 139\n200% 20SACS30LTRADI SIM 1x079 079\n55% 5006 VERMICEL MOYE 1x149 149\n55%  REGILAI300G 1x275 275\n55%  650G FRAISE ENTIER 1x355 355\n55%  75CL CREME FRAICHE 1x475 475\n55% 4/4 COCK.FRT SIROP 1x199 199\n55% POULET HALAL CRF 1x748 746\n1.599kg x 4 49€kg\n55% IL HUILE D', 'MARKET LE MANS BONNETABLE', '55a696d933da579214788d9b5cfaabd28bdb90b28e0bcf9c9722cad94bb05e96', '248248.00', NULL, '248248.00', NULL, 'accepted', '[{\"raw\":\"248 248\",\"value\":248248,\"score100\":75},{\"raw\":\"135 135\",\"value\":135135,\"score100\":74},{\"raw\":\"34.97\",\"value\":34.969999999999998863131622783839702606201171875,\"score100\":72},{\"raw\":\"31.54\",\"value\":31.53999999999999914734871708787977695465087890625,\"score100\":72},{\"raw\":\"34.97\",\"value\":34.969999999999998863131622783839702606201171875,\"score100\":72}]', '{\"via\":\"confirm_button\"}', '2026-02-07 14:28:16');
 
 -- --------------------------------------------------------
 
@@ -584,6 +670,15 @@ CREATE TABLE `recurring_transactions` (
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
+--
+-- Déchargement des données de la table `recurring_transactions`
+--
+
+INSERT INTO `recurring_transactions` (`id`, `user_id`, `amount`, `type`, `category`, `subcategory_id`, `date_time`, `frequency`, `interval_count`, `end_date`, `last_run_date`, `active`, `notes`, `created_at`) VALUES
+(13, 7, '1000.00', 'revenu', 'Revenus', 25, '2026-01-30 16:02:00', 'daily', 1, '2026-02-05', '2026-01-30', 1, '', '2026-01-30 16:02:55'),
+(14, 7, '-1000.00', 'dépense', 'Imprévus', 17, '2026-02-01 08:53:00', 'monthly', 1, '2026-05-01', '2026-02-01', 1, '', '2026-02-01 08:53:35'),
+(11, 7, '-23.99', 'dépense', 'Charge fixe', 5, '2026-02-05 10:59:00', 'monthly', 1, '2026-12-05', NULL, 1, '', '2026-01-27 07:00:11');
+
 -- --------------------------------------------------------
 
 --
@@ -597,72 +692,77 @@ CREATE TABLE `subcategories` (
   `icon` varchar(64) DEFAULT NULL,
   `description` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `manual_budget` decimal(10,2) DEFAULT NULL
+  `manual_budget` decimal(10,2) DEFAULT NULL,
+  `is_fixed` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `subcategories`
 --
 
-INSERT INTO `subcategories` (`id_subcategory`, `category_id`, `name`, `icon`, `description`, `created_at`, `manual_budget`) VALUES
-(1, 1, 'Loyer', 'Home', NULL, '2025-07-19 11:13:21', '550.00'),
-(2, 2, 'Salaire', 'MoneyWings', NULL, '2025-07-19 11:13:21', NULL),
-(3, 1, 'Électricité', 'LowBattery', NULL, '2025-07-19 11:13:21', NULL),
-(4, 1, 'Assurance habitation', 'Bank', NULL, '2025-07-19 11:13:21', '18.00'),
-(5, 1, 'Box Internet', 'Phone', NULL, '2025-07-19 11:13:21', '23.99'),
-(6, 1, 'Forfait mobile', 'Phone', NULL, '2025-07-19 11:13:21', NULL),
-(7, 3, 'Courses', 'ShoppingCart', NULL, '2025-07-19 11:13:21', '80.00'),
-(8, 3, 'Sodexo', 'Pasta', NULL, '2025-07-19 11:13:21', '70.00'),
-(9, 1, 'Transport', 'Bus', NULL, '2025-07-19 11:13:21', NULL),
-(10, 4, 'Habillement', NULL, NULL, '2025-07-19 11:13:21', NULL),
-(11, 5, 'Dépenses Sénégal', NULL, NULL, '2025-07-19 11:13:21', '459.50'),
-(12, 6, 'Crédit', NULL, NULL, '2025-07-19 11:13:21', '0.00'),
-(13, 1, 'Assurance bancaire', 'Bank', NULL, '2025-07-19 11:13:21', '2.25'),
-(14, 7, 'Famille', 'ManRedHair', NULL, '2025-07-19 11:13:21', NULL),
-(15, 1, 'Netflix/Amazon', 'Film', NULL, '2025-07-19 11:13:21', NULL),
-(16, 2, 'Autres', NULL, NULL, '2025-07-19 11:13:21', NULL),
-(17, 7, 'Autres', NULL, NULL, '2025-07-19 11:13:21', NULL),
-(18, 8, 'Dépense Adama', 'WomanWithHeadscarf', NULL, '2025-07-19 11:13:21', NULL),
-(19, 5, 'Mon père', 'ManRedHair', NULL, '2025-07-19 11:13:21', NULL),
-(20, 5, 'Tante Alimatou', NULL, NULL, '2025-07-19 11:13:21', NULL),
-(21, 5, 'Scolarité Pape Sidy', NULL, NULL, '2025-07-19 11:13:21', '0.00'),
-(22, 4, 'Perso', NULL, NULL, '2025-07-19 11:13:21', NULL),
-(23, 1, 'Lessives et autres', NULL, NULL, '2025-07-19 11:13:21', NULL),
-(24, 9, 'Impôts', 'CalendarAlt', NULL, '2025-07-19 11:13:21', NULL),
-(25, 2, 'Prime', 'MoneyWings', NULL, '2025-07-19 11:13:21', NULL),
-(26, 2, 'Participation', 'MoneyBag', NULL, '2025-07-19 11:13:21', NULL),
-(27, 5, 'Santé des parents', 'Stethoscope', NULL, '2025-07-19 11:13:21', NULL),
-(28, 5, 'Scolarité Mère Wane', 'Book', NULL, '2025-07-19 11:13:21', NULL),
-(29, 5, 'Scolarité Mamadou', 'Book', NULL, '2025-07-19 11:13:21', NULL),
-(30, 10, 'Fondation', NULL, NULL, '2025-07-19 11:13:21', NULL),
-(31, 3, 'Resto', NULL, NULL, '2025-08-08 19:46:11', '0.00'),
-(32, 11, 'Participation et intéressement', 'MoneyBag', NULL, '2025-08-20 19:10:49', NULL),
-(33, 2, 'Ticket resto', 'MoneyWings', NULL, '2025-07-19 11:13:21', NULL),
-(34, 4, 'Coiffeur', NULL, NULL, '2025-09-15 18:47:45', NULL),
-(333, 5, 'Pape Sidy', 'ManRedHair', NULL, '2025-10-05 14:44:59', '0.00'),
-(334, 5, 'Nafi Ndiongue', NULL, NULL, '2025-10-05 14:45:10', NULL),
-(335, 5, 'Amy Ndiongue', NULL, NULL, '2025-10-05 14:45:19', NULL),
-(336, 5, 'Bakary Ndiongue', NULL, NULL, '2025-10-05 14:45:33', '0.00'),
-(337, 5, 'Astou Ndiongue', NULL, NULL, '2025-10-05 14:46:23', NULL),
-(338, 5, 'Abdou Chakour', NULL, NULL, '2025-10-05 14:46:51', NULL),
-(339, 5, 'Badou Ndiongue', NULL, NULL, '2025-10-05 14:47:37', NULL),
-(340, 5, 'Mamadou Ndiongue', 'ManRedHair', NULL, '2025-10-05 14:47:47', '0.00'),
-(341, 5, 'Ablaye Diassy', NULL, NULL, '2025-10-05 14:50:46', NULL),
-(342, 5, 'Fatou Diassy', NULL, NULL, '2025-10-05 14:50:54', NULL),
-(343, 5, 'Seydou Ndiongue', NULL, NULL, '2025-10-05 14:51:36', '0.00'),
-(344, 5, 'Yaye Nafi', NULL, NULL, '2025-10-05 14:58:29', NULL),
-(345, 5, 'Sophy', NULL, NULL, '2025-10-05 15:39:25', NULL),
-(346, 5, 'Scolarité Mohamed Diassy', 'Book', NULL, '2025-10-05 15:44:14', NULL),
-(347, 4, 'Epargne de sécurité', NULL, NULL, '2025-10-05 17:33:35', NULL),
-(348, 4, 'Santé', 'Medical', NULL, '2025-10-25 10:54:21', '0.00'),
-(349, 12, 'Ecart non expliqué', NULL, NULL, '2025-11-11 07:24:14', NULL),
-(350, 13, 'Fondation', NULL, NULL, '2025-12-26 05:44:56', NULL),
-(351, 13, 'Livret A', 'MoneyBag', NULL, '2025-12-26 05:44:56', '70.00'),
-(353, 13, 'Tontine', NULL, NULL, '2025-12-26 05:46:46', NULL),
-(354, 13, 'Permis', NULL, NULL, '2025-12-31 16:38:40', NULL),
-(355, 1, 'Frais bancaire', 'Bank', NULL, '2025-12-31 21:20:07', '4.30'),
-(356, 8, 'Autres dépenses', 'WomanWithHeadscarf', NULL, '2025-12-31 21:21:40', NULL),
-(357, 13, 'Epargne de sécurité', NULL, NULL, '2026-01-02 17:07:49', NULL);
+INSERT INTO `subcategories` (`id_subcategory`, `category_id`, `name`, `icon`, `description`, `created_at`, `manual_budget`, `is_fixed`) VALUES
+(1, 1, 'Loyer', 'Home', NULL, '2025-07-19 11:13:21', '550.00', 1),
+(2, 2, 'Salaire', 'MoneyWings', NULL, '2025-07-19 11:13:21', NULL, 0),
+(3, 1, 'Électricité', 'LowBattery', NULL, '2025-07-19 11:13:21', '26.80', 1),
+(4, 1, 'Assurance habitation', 'Bank', NULL, '2025-07-19 11:13:21', '18.35', 1),
+(5, 1, 'Box Internet', 'Phone', NULL, '2025-07-19 11:13:21', '23.99', 0),
+(6, 1, 'Forfait mobile', 'Phone', NULL, '2025-07-19 11:13:21', '5.49', 1),
+(7, 3, 'Courses', 'ShoppingCart', NULL, '2025-07-19 11:13:21', '80.00', 0),
+(8, 3, 'Sodexo', 'Pasta', NULL, '2025-07-19 11:13:21', '70.00', 0),
+(9, 1, 'Transport', 'Bus', NULL, '2025-07-19 11:13:21', '35.85', 1),
+(10, 4, 'Habillement', NULL, NULL, '2025-07-19 11:13:21', NULL, 0),
+(11, 5, 'Dépenses Sénégal', NULL, NULL, '2025-07-19 11:13:21', '459.50', 1),
+(12, 6, 'Crédit', NULL, NULL, '2025-07-19 11:13:21', '0.00', 0),
+(13, 1, 'Assurance bancaire', 'Bank', NULL, '2025-07-19 11:13:21', '2.25', 1),
+(14, 7, 'Famille', 'ManRedHair', NULL, '2025-07-19 11:13:21', NULL, 0),
+(15, 1, 'Netflix/Amazon', 'Film', NULL, '2025-07-19 11:13:21', NULL, 0),
+(16, 2, 'Autres revenus', NULL, NULL, '2025-07-19 11:13:21', NULL, 0),
+(17, 7, 'Autres imprévus', NULL, NULL, '2025-07-19 11:13:21', NULL, 0),
+(18, 8, 'Dépense Adama', 'WomanWithHeadscarf', NULL, '2025-07-19 11:13:21', NULL, 1),
+(19, 5, 'Mon père', 'ManRedHair', NULL, '2025-07-19 11:13:21', NULL, 0),
+(20, 5, 'Tante Alimatou', NULL, NULL, '2025-07-19 11:13:21', NULL, 0),
+(21, 5, 'Scolarité Pape Sidy', NULL, NULL, '2025-07-19 11:13:21', '0.00', 0),
+(22, 4, 'Perso', NULL, NULL, '2025-07-19 11:13:21', NULL, 0),
+(23, 1, 'Lessives et autres', NULL, NULL, '2025-07-19 11:13:21', NULL, 0),
+(24, 9, 'Impôts', 'CalendarAlt', NULL, '2025-07-19 11:13:21', NULL, 0),
+(25, 2, 'Prime', 'MoneyWings', NULL, '2025-07-19 11:13:21', NULL, 0),
+(26, 2, 'Participation', 'MoneyBag', NULL, '2025-07-19 11:13:21', NULL, 0),
+(27, 5, 'Santé des parents', 'Stethoscope', NULL, '2025-07-19 11:13:21', NULL, 0),
+(28, 5, 'Scolarité Mère Wane', 'Book', NULL, '2025-07-19 11:13:21', NULL, 1),
+(29, 5, 'Scolarité Mamadou', 'Book', NULL, '2025-07-19 11:13:21', NULL, 1),
+(30, 10, 'Fondation', NULL, NULL, '2025-07-19 11:13:21', NULL, 0),
+(31, 3, 'Resto', NULL, NULL, '2025-08-08 19:46:11', '0.00', 0),
+(32, 11, 'Placements', NULL, NULL, '2025-08-20 19:10:49', NULL, 0),
+(33, 2, 'Ticket resto', 'MoneyWings', NULL, '2025-07-19 11:13:21', NULL, 0),
+(34, 4, 'Coiffeur', NULL, NULL, '2025-09-15 18:47:45', NULL, 0),
+(333, 5, 'Pape Sidy', 'ManRedHair', NULL, '2025-10-05 14:44:59', '0.00', 0),
+(334, 5, 'Nafi Ndiongue', NULL, NULL, '2025-10-05 14:45:10', NULL, 0),
+(335, 5, 'Amy Ndiongue', NULL, NULL, '2025-10-05 14:45:19', NULL, 0),
+(336, 5, 'Bakary Ndiongue', NULL, NULL, '2025-10-05 14:45:33', '0.00', 0),
+(337, 5, 'Astou Ndiongue', NULL, NULL, '2025-10-05 14:46:23', NULL, 0),
+(338, 5, 'Abdou Chakour', NULL, NULL, '2025-10-05 14:46:51', NULL, 0),
+(339, 5, 'Badou Ndiongue', NULL, NULL, '2025-10-05 14:47:37', NULL, 0),
+(340, 5, 'Mamadou Ndiongue', 'ManRedHair', NULL, '2025-10-05 14:47:47', '0.00', 0),
+(341, 5, 'Ablaye Diassy', NULL, NULL, '2025-10-05 14:50:46', NULL, 0),
+(342, 5, 'Fatou Diassy', NULL, NULL, '2025-10-05 14:50:54', NULL, 0),
+(343, 5, 'Seydou Ndiongue', NULL, NULL, '2025-10-05 14:51:36', '0.00', 0),
+(344, 5, 'Yaye Nafi', NULL, NULL, '2025-10-05 14:58:29', NULL, 0),
+(345, 5, 'Sophy', NULL, NULL, '2025-10-05 15:39:25', NULL, 0),
+(346, 5, 'Scolarité Mohamed Diassy', 'Book', NULL, '2025-10-05 15:44:14', NULL, 0),
+(347, 4, 'Epargne de sécurité', NULL, NULL, '2025-10-05 17:33:35', NULL, 0),
+(348, 4, 'Santé', 'Medical', NULL, '2025-10-25 10:54:21', '0.00', 0),
+(349, 12, 'Ecart non expliqué', NULL, NULL, '2025-11-11 07:24:14', NULL, 0),
+(350, 13, 'Fondation', NULL, NULL, '2025-12-26 05:44:56', NULL, 0),
+(351, 13, 'Livret A', 'MoneyBag', NULL, '2025-12-26 05:44:56', '70.00', 0),
+(353, 13, 'Tontine', NULL, NULL, '2025-12-26 05:46:46', NULL, 0),
+(354, 13, 'Permis', NULL, NULL, '2025-12-31 16:38:40', NULL, 0),
+(355, 1, 'Frais bancaire', 'Bank', NULL, '2025-12-31 21:20:07', '4.30', 1),
+(356, 8, 'Autres dépenses Adama', 'WomanWithHeadscarf', NULL, '2025-12-31 21:21:40', NULL, 0),
+(357, 13, 'Epargne de sécurité', NULL, NULL, '2026-01-02 17:07:49', NULL, 0),
+(360, 2, 'Retrait dans épargne', 'MoneyWings', NULL, '2026-01-04 14:33:11', NULL, 0),
+(361, 2, 'Rachat CET', 'MoneyWings', NULL, '2026-01-24 09:52:07', NULL, 0),
+(362, 13, 'Voyage Sénégal', NULL, NULL, '2026-01-29 10:54:39', NULL, 0),
+(363, 13, 'Vacance', NULL, NULL, '2026-02-06 21:11:23', NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -994,12 +1094,12 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (300, NULL, 7, 1, '1', 3, 8, 'Nourriture & Santé', 'Sodexo', '80.00', '', 'EUR', '80.00', '2025-01-02 00:00:00', NULL, NULL),
 (301, NULL, 7, 1, '1', 5, 29, 'Famille au Sénégal', 'Scolarité Mamadou', '38.11', '', 'EUR', '38.11', '2025-01-02 00:00:00', NULL, NULL),
 (302, NULL, 7, 1, '1', 5, 346, 'Imprévus', 'Famille', '19.78', 'Scolarité Mohamed Diassy', 'EUR', '19.78', '2025-01-02 00:00:00', NULL, NULL),
-(303, NULL, 7, 1, '1', 5, 28, 'Famille au Sénégal', 'Scolarité Mère Wane', '41.16', '', 'EUR', '41.16', '2025-02-01 00:00:00', NULL, NULL),
+(303, NULL, 7, 1, 'expense', 5, 28, 'Famille SN', 'Scolarité Mère Wane', '41.16', NULL, 'EUR', '41.16', '2025-01-28 19:00:00', NULL, NULL),
 (304, NULL, 7, 1, '1', 5, 21, 'Famille au Sénégal', 'Scolarité Pape Sidy', '53.35', '', 'EUR', '53.35', '2025-02-02 00:00:00', NULL, NULL),
 (305, NULL, 7, 1, '1', 8, 18, 'Ma femme', 'Dépense', '428.34', '', 'EUR', '428.34', '2025-02-02 00:00:00', NULL, NULL),
 (306, NULL, 7, 2, '2', 2, 2, '2', '2', '2395.30', '', 'EUR', '2395.30', '2025-01-01 00:00:00', NULL, NULL),
 (307, NULL, 7, 1, '1', 5, 11, 'Famille au Sénégal', 'Dépenses', '260.65', '', 'EUR', '260.65', '2025-02-02 00:00:00', NULL, NULL),
-(308, NULL, 7, 1, '1', 1, 1, 'Charge fixe', 'Loyer', '550.00', '', 'EUR', '550.00', '2025-02-02 00:00:00', NULL, NULL),
+(308, NULL, 7, 1, 'expense', 1, 1, 'Charge fixe', 'Loyer', '550.00', NULL, 'EUR', '550.00', '2025-01-29 09:00:00', NULL, NULL),
 (309, NULL, 7, 1, '1', 1, 3, 'Charge fixe', 'Électricité', '30.16', '', 'EUR', '30.16', '2025-02-02 00:00:00', NULL, NULL),
 (310, NULL, 7, 1, '1', 1, 4, 'Charge fixe', 'Assurance habitation', '17.25', '', 'EUR', '17.25', '2025-02-02 00:00:00', NULL, NULL),
 (311, NULL, 7, 1, '1', 1, 9, 'Charge fixe', 'Transport', '35.85', '', 'EUR', '35.85', '2025-02-02 00:00:00', NULL, NULL),
@@ -1052,7 +1152,7 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (358, NULL, 7, 1, '1', 1, 13, 'Charge fixe', 'Assurance bancaire', '8.25', '', 'EUR', '8.25', '2025-05-01 00:00:00', NULL, NULL),
 (359, NULL, 7, 1, '1', 3, 8, 'Nourriture & Santé', 'Sodexo', '60.00', '75€', 'EUR', '60.00', '2025-05-01 00:00:00', NULL, NULL),
 (360, NULL, 7, 1, '1', 5, 29, 'Famille au Sénégal', 'Scolarité Mamadou', '38.11', '', 'EUR', '38.11', '2025-05-01 00:00:00', NULL, NULL),
-(361, NULL, 7, 1, 'Epargne', 13, 353, 'Objectif', 'Tontine', '80.00', 'Tontine 3', 'EUR', '78.00', '2025-05-01 13:00:00', NULL, NULL),
+(361, NULL, 7, 1, 'Epargne', 13, 353, 'Objectif', 'Tontine', '78.00', 'Tontine 3', 'EUR', '78.00', '2025-05-01 13:00:00', NULL, NULL),
 (362, NULL, 7, 1, '1', 5, 346, 'Imprévus', 'Famille', '19.78', 'Scolarité Mohamed Diassy', 'EUR', '19.78', '2025-05-01 00:00:00', NULL, NULL),
 (363, NULL, 7, 1, '1', 5, 28, 'Famille au Sénégal', 'Scolarité Mère Wane', '41.16', '', 'EUR', '41.16', '2025-06-01 00:00:00', NULL, NULL),
 (364, NULL, 7, 1, '1', 5, 21, 'Famille au Sénégal', 'Scolarité Pape Sidy', '53.35', '', 'EUR', '53.35', '2025-06-01 00:00:00', NULL, NULL),
@@ -1087,8 +1187,7 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (394, NULL, 7, 1, '1', 1, 5, 'Charge fixe', 'Freebox', '15.99', '', 'EUR', '15.99', '2025-08-01 00:00:00', NULL, NULL),
 (395, NULL, 7, 1, '1', 1, 13, 'Charge fixe', 'Assurance bancaire', '8.25', '', 'EUR', '8.25', '2025-08-01 00:00:00', NULL, NULL),
 (396, NULL, 7, 1, '1', 3, 7, 'Nourriture & Santé', 'Courses', '60.00', '', 'EUR', '60.00', '2025-08-01 00:00:00', NULL, NULL),
-(397, NULL, 7, 1, '1', 3, 8, 'Nourriture & Santé', 'Sodexo', '60.00', '', 'EUR', '60.00', '2025-08-01 00:00:00', NULL, NULL);
-INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_type`, `Type`, `category_id`, `subcategory_id`, `Catégorie`, `Sous-catégorie`, `Montant`, `Notes`, `currency`, `Montant_eur`, `Date`, `recurring_plan_id`, `recurring_group_id`) VALUES
+(397, NULL, 7, 1, '1', 3, 8, 'Nourriture & Santé', 'Sodexo', '60.00', '', 'EUR', '60.00', '2025-08-01 00:00:00', NULL, NULL),
 (398, NULL, 7, 1, 'Epargne', 13, 353, 'Objectif', 'Tontine', '78.48', 'Tontine 6', 'EUR', '78.48', '2025-08-01 22:00:00', NULL, NULL),
 (399, NULL, 7, 1, '1', 1, 1, 'Charge fixe', 'Loyer', '550.00', '', 'EUR', '550.00', '2025-08-02 00:00:00', NULL, NULL),
 (400, NULL, 7, 2, '2', 2, 2, '2', '2', '2354.74', '', 'EUR', '2354.74', '2025-08-01 00:00:00', NULL, NULL),
@@ -1282,7 +1381,6 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (617, NULL, 7, 1, '1', 8, 18, NULL, NULL, '45.73', 'Cotisation Gamou', 'EUR', '45.73', '2025-09-01 00:00:00', NULL, NULL),
 (620, NULL, 7, 1, '1', 7, 17, NULL, NULL, '77.71', 'Assane Savane', 'EUR', '77.71', '2025-08-22 00:00:00', NULL, NULL),
 (621, NULL, 7, 1, '1', 5, 333, NULL, NULL, '16.73', 'Pape Sidy', 'EUR', '16.73', '2025-08-19 00:00:00', NULL, NULL),
-(623, NULL, 7, 3, '3', 11, 32, 'Natixis', 'Participation et int', '4358.00', 'Participation et investissement placé', 'EUR', '4358.00', '2025-05-16 00:00:00', NULL, NULL),
 (624, NULL, 7, 1, '1', 5, 339, 'Imprévus', 'Famille', '31.98', 'Badou Ndiongue', 'EUR', '31.98', '2025-09-01 00:00:00', NULL, NULL),
 (625, NULL, 7, 1, '1', 5, 19, 'Famille au Sénégal', 'Mon père', '29.82', '', 'EUR', '29.82', '2025-09-01 00:00:00', NULL, NULL),
 (626, NULL, 7, 2, '2', 2, 33, '2', '33', '31.00', '', 'EUR', '31.00', '2025-07-01 00:00:00', NULL, NULL),
@@ -1305,7 +1403,6 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (643, NULL, 7, 1, '1', 5, 333, NULL, NULL, '16.73', 'Pape Sidy', 'EUR', '16.73', '2025-09-13 00:00:00', NULL, NULL),
 (644, NULL, 7, 1, '1', 4, 22, NULL, NULL, '98.43', 'Régule Bourso Bank', 'EUR', '98.43', '2025-09-13 00:00:00', NULL, NULL),
 (645, NULL, 7, 1, '1', 4, 34, NULL, NULL, '18.00', '18', 'EUR', '18.00', '2025-09-15 00:00:00', NULL, NULL),
-(646, NULL, 7, 3, '3', 11, 32, 'Natixis', 'Participation et int', '1000.00', 'Avance sur participation et intéressement', 'EUR', '1000.00', '2025-09-22 00:00:00', NULL, NULL),
 (647, NULL, 7, 1, '1', 3, 7, 'Nourritures', 'Courses', '22.00', 'Gâteau anniversaire Omar', 'EUR', '22.00', '2025-09-19 00:00:00', NULL, NULL),
 (648, NULL, 7, 1, '1', 5, 336, NULL, NULL, '16.73', 'Bakary', 'EUR', '16.73', '2025-09-21 00:00:00', NULL, NULL),
 (649, NULL, 7, 1, '1', 7, 17, NULL, NULL, '77.71', 'Assane Savane', 'EUR', '77.71', '2025-09-22 00:00:00', NULL, NULL),
@@ -1334,13 +1431,13 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (701, NULL, 7, 1, '1', 5, 28, '5', '28', '41.92', 'Mensualité', 'EUR', '41.92', '2025-11-01 00:00:00', NULL, NULL),
 (702, NULL, 7, 1, '1', 5, 28, NULL, NULL, '41.92', '', 'EUR', '41.92', '2025-12-01 00:00:00', NULL, NULL),
 (725, NULL, 7, 1, '1', 5, 28, '5', '28', '41.92', '', 'EUR', '41.92', '2025-12-24 12:14:00', NULL, NULL),
-(726, NULL, 7, 1, '1', 5, 28, NULL, NULL, '41.92', '', 'EUR', '41.92', '2026-02-03 00:00:00', NULL, NULL),
+(726, NULL, 7, 1, 'expense', 5, 28, 'Famille SN', 'Scolarité Mère Wane', '41.92', NULL, 'EUR', '41.92', '2026-01-26 18:50:00', NULL, NULL),
 (727, NULL, 7, 1, '1', 5, 28, NULL, NULL, '41.92', '', 'EUR', '41.92', '2026-03-03 00:00:00', NULL, NULL),
 (728, NULL, 7, 1, '1', 5, 28, NULL, NULL, '41.92', '', 'EUR', '41.92', '2026-04-02 00:00:00', NULL, NULL),
 (729, NULL, 7, 1, '1', 5, 28, NULL, NULL, '41.92', '', 'EUR', '41.92', '2026-05-02 00:00:00', NULL, NULL),
 (730, NULL, 7, 1, '1', 5, 28, NULL, NULL, '41.92', '', 'EUR', '41.92', '2026-06-02 00:00:00', NULL, NULL),
 (737, NULL, 7, 1, '1', 1, 1, NULL, NULL, '550.00', '', 'EUR', '550.00', '2025-12-24 12:14:00', NULL, NULL),
-(738, NULL, 7, 1, '1', 1, 1, NULL, NULL, '550.00', '', 'EUR', '550.00', '2026-02-02 00:00:00', NULL, NULL),
+(738, NULL, 7, 1, 'expense', 1, 1, 'Charge fixe', 'Loyer', '550.00', NULL, 'EUR', '550.00', '2026-01-27 19:45:00', NULL, NULL),
 (739, NULL, 7, 1, '1', 1, 1, NULL, NULL, '550.00', '', 'EUR', '550.00', '2026-03-02 00:00:00', NULL, NULL),
 (740, NULL, 7, 1, '1', 1, 1, NULL, NULL, '550.00', '', 'EUR', '550.00', '2026-04-01 00:00:00', NULL, NULL),
 (741, NULL, 7, 1, '1', 1, 1, NULL, NULL, '550.00', '', 'EUR', '550.00', '2026-05-01 00:00:00', NULL, NULL),
@@ -1351,7 +1448,7 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (746, NULL, 7, 1, '1', 1, 1, NULL, NULL, '550.00', '', 'EUR', '550.00', '2026-10-01 00:00:00', NULL, NULL),
 (747, NULL, 7, 1, '1', 1, 1, NULL, NULL, '550.00', '', 'EUR', '550.00', '2026-11-02 00:00:00', NULL, NULL),
 (748, NULL, 7, 1, '1', 1, 1, NULL, NULL, '550.00', '', 'EUR', '550.00', '2026-12-02 00:00:00', NULL, NULL),
-(749, NULL, 7, 1, 'expense', 1, 9, 'Charge fixe', 'Transport', '35.85', '', 'EUR', '35.85', '2026-01-11 12:00:00', NULL, NULL),
+(749, NULL, 7, 1, 'expense', 1, 9, 'Charge fixe', 'Transport', '35.85', NULL, 'EUR', '35.85', '2026-01-12 10:00:00', NULL, NULL),
 (750, NULL, 7, 1, '1', 1, 9, NULL, NULL, '35.85', '', 'EUR', '35.85', '2026-02-11 00:00:00', NULL, NULL),
 (751, NULL, 7, 1, '1', 1, 9, NULL, NULL, '35.85', '', 'EUR', '35.85', '2026-03-11 00:00:00', NULL, NULL),
 (752, NULL, 7, 1, '1', 1, 9, NULL, NULL, '35.85', '', 'EUR', '35.85', '2026-04-10 00:00:00', NULL, NULL),
@@ -1363,8 +1460,8 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (758, NULL, 7, 1, '1', 1, 9, NULL, NULL, '35.85', '', 'EUR', '35.85', '2026-10-10 00:00:00', NULL, NULL),
 (759, NULL, 7, 1, '1', 1, 9, NULL, NULL, '35.85', '', 'EUR', '35.85', '2026-11-11 00:00:00', NULL, NULL),
 (760, NULL, 7, 1, '1', 1, 9, NULL, NULL, '35.85', '', 'EUR', '35.85', '2026-12-11 00:00:00', NULL, NULL),
-(761, NULL, 7, 1, 'expense', 1, 4, 'Charge fixe', 'Assurance habitation', '18.13', '', 'EUR', '18.13', '2026-01-05 09:00:00', NULL, NULL),
-(762, NULL, 7, 1, '1', 1, 4, NULL, NULL, '18.00', '', 'EUR', '18.00', '2026-02-02 00:00:00', NULL, NULL),
+(761, NULL, 7, 1, 'expense', 1, 4, 'Charge fixe', 'Assurance habitation', '18.00', '', 'EUR', '18.00', '2026-01-05 10:00:00', NULL, NULL),
+(762, NULL, 7, 1, 'expense', 1, 4, 'Charge fixe', 'Assurance habitation', '18.35', NULL, 'EUR', '18.35', '2026-02-05 09:00:00', NULL, NULL),
 (763, NULL, 7, 1, '1', 1, 4, NULL, NULL, '18.00', '', 'EUR', '18.00', '2026-03-02 00:00:00', NULL, NULL),
 (764, NULL, 7, 1, '1', 1, 4, NULL, NULL, '18.00', '', 'EUR', '18.00', '2026-04-01 00:00:00', NULL, NULL),
 (765, NULL, 7, 1, '1', 1, 4, NULL, NULL, '18.00', '', 'EUR', '18.00', '2026-05-01 00:00:00', NULL, NULL),
@@ -1391,7 +1488,7 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (786, NULL, 7, 1, '1', 5, 340, NULL, NULL, '35.06', 'Mensualité', 'EUR', '35.06', '2025-11-01 00:00:00', NULL, NULL),
 (787, NULL, 7, 1, '1', 5, 340, NULL, NULL, '35.06', 'Mensualité', 'EUR', '35.06', '2025-12-01 00:00:00', NULL, NULL),
 (788, NULL, 7, 1, '1', 5, 340, NULL, NULL, '35.06', 'Mensualité', 'EUR', '35.06', '2025-12-24 12:14:00', NULL, NULL),
-(789, NULL, 7, 1, '1', 5, 340, NULL, NULL, '35.06', 'Mensualité', 'EUR', '35.06', '2026-02-01 00:00:00', NULL, NULL),
+(789, NULL, 7, 1, 'expense', 5, 340, 'Famille SN', 'Mamadou Ndiongue', '35.06', 'Mensualité', 'EUR', '35.06', '2026-01-26 18:50:00', NULL, NULL),
 (790, NULL, 7, 1, '1', 5, 340, NULL, NULL, '35.06', 'Mensualité', 'EUR', '35.06', '2026-03-01 00:00:00', NULL, NULL),
 (792, NULL, 7, 1, '1', 5, 340, NULL, NULL, '35.06', 'Mensualité', 'EUR', '35.06', '2026-04-30 00:00:00', NULL, NULL),
 (793, NULL, 7, 1, '1', 5, 340, NULL, NULL, '35.06', 'Mensualité', 'EUR', '35.06', '2026-05-31 00:00:00', NULL, NULL),
@@ -1401,13 +1498,11 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (797, NULL, 7, 1, '1', 5, 340, NULL, NULL, '35.06', 'Mensualité', 'EUR', '35.06', '2026-09-30 00:00:00', NULL, NULL),
 (798, NULL, 7, 2, '2', 2, 2, '2', '2', '2355.34', '', 'EUR', '2355.34', '2025-10-01 00:00:00', NULL, NULL),
 (799, NULL, 7, 2, '2', 2, 2, '2', '2', '2355.34', '', 'EUR', '2355.34', '2025-11-01 00:00:00', NULL, NULL),
-(800, NULL, 7, 1, 'Epargne', 13, 351, 'Objectif', 'Livret A', '30.12', 'Dépot livret A - 10-2026', 'EUR', '30.12', '2025-10-26 22:00:00', NULL, NULL),
 (801, NULL, 7, 1, '1', 4, 22, NULL, NULL, '30.00', '', 'EUR', '30.00', '2025-10-29 00:00:00', NULL, NULL),
 (802, NULL, 7, 1, '1', 8, 18, '8', '18', '214.92', 'Armoire', 'EUR', '214.92', '2025-11-01 00:00:00', NULL, NULL),
 (803, NULL, 7, 1, '1', 5, 333, NULL, NULL, '16.73', '', 'EUR', '16.73', '2025-10-30 00:00:00', NULL, NULL),
 (804, NULL, 7, 1, '1', 4, 22, NULL, NULL, '77.71', 'Sarakh Ouli', 'EUR', '77.71', '2025-11-01 00:00:00', NULL, NULL),
 (805, NULL, 7, 2, '2', 2, 2, '2', '2', '2363.49', '', 'EUR', '2363.49', '2025-12-17 00:00:00', NULL, NULL),
-(806, NULL, 7, 2, '2', 2, 2, NULL, NULL, '2355.34', '', 'EUR', '2355.34', '2026-02-01 00:00:00', NULL, NULL),
 (807, NULL, 7, 2, '2', 2, 2, NULL, NULL, '2355.34', '', 'EUR', '2355.34', '2026-03-01 00:00:00', NULL, NULL),
 (809, NULL, 7, 2, '2', 2, 2, '2', '2', '2355.34', '', 'EUR', '2355.34', '2026-04-01 00:00:00', NULL, NULL),
 (810, NULL, 7, 2, '2', 2, 2, '2', '2', '2355.34', '', 'EUR', '2355.34', '2026-05-01 00:00:00', NULL, NULL),
@@ -1417,10 +1512,10 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (814, NULL, 7, 2, '2', 2, 2, '2', '2', '2355.34', '', 'EUR', '2355.34', '2026-09-01 00:00:00', NULL, NULL),
 (815, NULL, 7, 2, '2', 2, 2, NULL, NULL, '2355.34', '', 'EUR', '2355.34', '2026-11-01 00:00:00', NULL, NULL),
 (816, NULL, 7, 2, '2', 2, 2, NULL, NULL, '2355.34', '', 'EUR', '2355.34', '2026-12-01 00:00:00', NULL, NULL),
-(817, NULL, 7, 1, 'expense', 1, 355, 'Charge fixe', 'Frais bancaire', '4.30', '', 'EUR', '4.30', '2026-01-25 11:14:00', NULL, NULL),
+(817, NULL, 7, 1, 'expense', 1, 355, 'Charge fixe', 'Frais bancaire', '4.30', NULL, 'EUR', '4.30', '2026-01-26 09:15:00', NULL, NULL),
 (818, NULL, 7, 1, 'expense', 1, 13, 'Charge fixe', 'Assurance bancaire', '2.25', '', 'EUR', '2.25', '2026-02-10 13:14:00', NULL, NULL),
 (829, NULL, 7, 1, 'expense', 1, 3, 'Charge fixe', 'Électricité', '26.80', '', 'EUR', '26.80', '2026-01-02 10:00:00', NULL, NULL),
-(830, NULL, 7, 1, '1', 1, 3, NULL, NULL, '26.80', '', 'EUR', '26.80', '2026-02-01 00:00:00', NULL, NULL),
+(830, NULL, 7, 1, 'expense', 1, 3, 'Charge fixe', 'Électricité', '26.80', NULL, 'EUR', '26.80', '2026-02-02 09:00:00', NULL, NULL),
 (831, NULL, 7, 1, '1', 1, 3, NULL, NULL, '26.80', '', 'EUR', '26.80', '2026-03-01 00:00:00', NULL, NULL),
 (832, NULL, 7, 1, '1', 1, 3, NULL, NULL, '26.80', '', 'EUR', '26.80', '2026-03-31 00:00:00', NULL, NULL),
 (833, NULL, 7, 1, '1', 1, 3, NULL, NULL, '26.80', '', 'EUR', '26.80', '2026-04-30 00:00:00', NULL, NULL),
@@ -1432,8 +1527,7 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (839, NULL, 7, 1, '1', 1, 3, NULL, NULL, '26.80', '', 'EUR', '26.80', '2026-11-01 00:00:00', NULL, NULL),
 (840, NULL, 7, 1, '1', 1, 3, NULL, NULL, '26.80', '', 'EUR', '26.80', '2026-12-01 00:00:00', NULL, NULL),
 (841, NULL, 7, 1, 'expense', 1, 6, 'Charge fixe', 'Forfait mobile', '19.99', '', 'EUR', '19.99', '2026-01-03 10:00:00', NULL, NULL),
-(842, NULL, 7, 1, 'expense', 3, 8, 'Nourritures', 'Sodexo', '50.00', '', 'EUR', '50.00', '2026-01-05 11:00:00', NULL, NULL),
-(843, NULL, 7, 1, '1', 3, 8, NULL, NULL, '70.00', '', 'EUR', '70.00', '2026-02-01 00:00:00', NULL, NULL),
+(842, NULL, 7, 1, 'expense', 3, 8, 'Nourritures', 'Sodexo', '50.00', '', 'EUR', '50.00', '2026-01-04 11:00:00', NULL, NULL),
 (844, NULL, 7, 1, '1', 3, 8, NULL, NULL, '70.00', '', 'EUR', '70.00', '2026-03-01 00:00:00', NULL, NULL),
 (845, NULL, 7, 1, '1', 3, 8, '3', '8', '70.00', '', 'EUR', '70.00', '2026-04-01 00:00:00', NULL, NULL),
 (847, NULL, 7, 1, '1', 3, 8, '3', '8', '70.00', '', 'EUR', '70.00', '2026-05-01 00:00:00', NULL, NULL),
@@ -1444,7 +1538,6 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (852, NULL, 7, 1, '1', 3, 8, NULL, NULL, '70.00', '', 'EUR', '70.00', '2026-11-01 00:00:00', NULL, NULL),
 (853, NULL, 7, 1, '1', 3, 8, NULL, NULL, '70.00', '', 'EUR', '70.00', '2026-12-01 00:00:00', NULL, NULL),
 (854, NULL, 7, 1, '1', 5, 11, NULL, NULL, '459.50', '', 'EUR', '459.50', '2025-12-24 12:14:00', NULL, NULL),
-(855, NULL, 7, 1, '1', 5, 11, NULL, NULL, '459.50', '', 'EUR', '459.50', '2026-02-01 00:00:00', NULL, NULL),
 (856, NULL, 7, 1, '1', 5, 11, NULL, NULL, '459.50', '', 'EUR', '459.50', '2026-03-01 00:00:00', NULL, NULL),
 (858, NULL, 7, 1, '1', 5, 11, NULL, NULL, '459.50', '', 'EUR', '459.50', '2026-04-30 00:00:00', NULL, NULL),
 (859, NULL, 7, 1, '1', 5, 11, NULL, NULL, '459.50', '', 'EUR', '459.50', '2026-05-31 00:00:00', NULL, NULL),
@@ -1460,7 +1553,6 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (869, NULL, 7, 1, '1', 8, 18, '8', '18', '114.68', '', 'EUR', '114.68', '2025-12-01 00:00:00', NULL, NULL),
 (870, NULL, 7, 1, '1', 8, 18, NULL, NULL, '428.00', '', 'EUR', '428.00', '2025-12-01 00:00:00', NULL, NULL),
 (871, NULL, 7, 1, 'expense', 8, 18, 'Ma femme', 'Dépense', '428.35', '', 'EUR', '428.35', '2025-12-23 15:18:00', NULL, NULL),
-(872, NULL, 7, 1, 'expense', 3, 7, 'Nourritures', 'Courses', '40.00', '', 'EUR', '40.00', '2026-01-19 12:00:00', NULL, NULL),
 (874, NULL, 7, 1, '1', 7, 17, '7', '17', '77.71', 'Assane Savane', 'EUR', '77.71', '2025-11-11 00:00:00', NULL, NULL),
 (875, NULL, 7, 1, '1', 5, 333, NULL, NULL, '6.06', '', 'EUR', '6.06', '2025-11-11 00:00:00', NULL, NULL),
 (876, NULL, 7, 1, '1', 3, 31, NULL, NULL, '8.50', 'Kebab', 'EUR', '8.50', '2025-11-12 00:00:00', NULL, NULL),
@@ -1472,7 +1564,7 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (882, NULL, 7, 1, '1', 5, 19, NULL, NULL, '31.98', '', 'EUR', '31.98', '2025-12-02 00:00:00', NULL, NULL),
 (883, NULL, 7, 1, '1', 3, 7, NULL, NULL, '8.97', '', 'EUR', '8.97', '2025-12-03 00:00:00', NULL, NULL),
 (884, NULL, 7, 1, '1', 8, 18, NULL, NULL, '16.73', 'Transport recup documents vfs', 'EUR', '16.73', '2025-12-16 00:00:00', NULL, NULL),
-(885, NULL, 7, 1, '1', 1, 6, NULL, NULL, '19.99', '', 'EUR', '19.99', '2026-02-02 00:00:00', NULL, NULL),
+(885, NULL, 7, 1, 'expense', 1, 6, 'Charge fixe', 'Forfait mobile', '5.49', NULL, 'EUR', '5.49', '2026-02-14 11:00:00', NULL, NULL),
 (886, NULL, 7, 1, '1', 1, 6, NULL, NULL, '19.99', '', 'EUR', '19.99', '2026-03-02 00:00:00', NULL, NULL),
 (887, NULL, 7, 1, '1', 1, 6, NULL, NULL, '19.99', '', 'EUR', '19.99', '2026-04-01 00:00:00', NULL, NULL),
 (888, NULL, 7, 1, '1', 1, 6, NULL, NULL, '19.99', '', 'EUR', '19.99', '2026-05-01 00:00:00', NULL, NULL),
@@ -1483,7 +1575,6 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (893, NULL, 7, 1, '1', 1, 6, NULL, NULL, '19.99', '', 'EUR', '19.99', '2026-10-01 00:00:00', NULL, NULL),
 (894, NULL, 7, 1, '1', 1, 6, NULL, NULL, '19.99', '', 'EUR', '19.99', '2026-11-02 00:00:00', NULL, NULL),
 (895, NULL, 7, 1, '1', 1, 6, NULL, NULL, '19.99', '', 'EUR', '19.99', '2026-12-02 00:00:00', NULL, NULL),
-(909, NULL, 7, 1, '1', 3, 7, NULL, NULL, '80.00', '', 'EUR', '80.00', '2026-02-05 00:00:00', NULL, NULL),
 (910, NULL, 7, 1, '1', 3, 7, NULL, NULL, '80.00', '', 'EUR', '80.00', '2026-03-05 00:00:00', NULL, NULL),
 (911, NULL, 7, 1, '1', 3, 7, NULL, NULL, '80.00', '', 'EUR', '80.00', '2026-04-04 00:00:00', NULL, NULL),
 (912, NULL, 7, 1, '1', 3, 7, NULL, NULL, '80.00', '', 'EUR', '80.00', '2026-05-04 00:00:00', NULL, NULL),
@@ -1495,7 +1586,6 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (918, NULL, 7, 1, '1', 3, 7, NULL, NULL, '80.00', '', 'EUR', '80.00', '2026-11-05 00:00:00', NULL, NULL),
 (919, NULL, 7, 1, '1', 3, 7, NULL, NULL, '80.00', '', 'EUR', '80.00', '2026-12-05 00:00:00', NULL, NULL),
 (921, NULL, 7, 1, '1', 3, 8, NULL, NULL, '70.00', '', 'EUR', '70.00', '2026-10-01 00:00:00', NULL, NULL),
-(922, NULL, 7, 1, '1', 8, 18, NULL, NULL, '428.34', '', 'EUR', '428.34', '2026-02-05 00:00:00', NULL, NULL),
 (923, NULL, 7, 1, '1', 8, 18, NULL, NULL, '428.34', '', 'EUR', '428.34', '2026-03-05 00:00:00', NULL, NULL),
 (924, NULL, 7, 1, '1', 8, 18, NULL, NULL, '428.34', '', 'EUR', '428.34', '2026-04-04 00:00:00', NULL, NULL),
 (925, NULL, 7, 1, '1', 8, 18, NULL, NULL, '428.34', '', 'EUR', '428.34', '2026-05-04 00:00:00', NULL, NULL),
@@ -1507,22 +1597,49 @@ INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_t
 (931, NULL, 7, 1, '1', 8, 18, NULL, NULL, '428.34', '', 'EUR', '428.34', '2026-11-05 00:00:00', NULL, NULL),
 (932, NULL, 7, 1, '1', 8, 18, NULL, NULL, '428.34', '', 'EUR', '428.34', '2026-12-05 00:00:00', NULL, NULL),
 (934, NULL, 7, 1, '1', 5, 11, NULL, NULL, '459.50', '', 'EUR', '459.50', '2026-10-01 00:00:00', NULL, NULL),
-(957, NULL, 7, 1, 'expense', 3, 7, NULL, NULL, '7.90', '', 'EUR', '7.90', '2025-12-28 11:35:00', NULL, NULL),
 (958, NULL, 7, 1, 'expense', 4, 22, NULL, NULL, '13.73', '', 'EUR', '13.73', '2025-12-24 09:51:00', NULL, NULL),
 (959, NULL, 7, 1, 'expense', 4, 22, NULL, NULL, '39.36', 'Achat cartouche d’imprimante ', 'EUR', '39.36', '2025-12-23 18:32:00', NULL, NULL),
 (960, NULL, 7, 1, 'expense', 3, 31, NULL, NULL, '15.00', 'Kebab avec Samuel', 'EUR', '15.00', '2025-12-23 12:47:00', NULL, NULL),
 (961, NULL, 7, 1, 'expense', 3, 7, NULL, NULL, '18.27', '', 'EUR', '18.27', '2025-12-20 12:35:00', NULL, NULL),
-(962, NULL, 7, 1, 'expense', 3, 7, NULL, NULL, '11.23', '', 'EUR', '11.23', '2025-12-14 10:38:00', NULL, NULL);
-INSERT INTO `transactions` (`id_transaction`, `goal_id`, `id_utilisateur`, `id_type`, `Type`, `category_id`, `subcategory_id`, `Catégorie`, `Sous-catégorie`, `Montant`, `Notes`, `currency`, `Montant_eur`, `Date`, `recurring_plan_id`, `recurring_group_id`) VALUES
+(962, NULL, 7, 1, 'expense', 3, 7, NULL, NULL, '11.23', '', 'EUR', '11.23', '2025-12-14 10:38:00', NULL, NULL),
 (963, NULL, 7, 1, 'expense', 8, 18, NULL, NULL, '16.73', 'Yango recup documents état civil ', 'EUR', '16.73', '2025-12-22 19:46:00', NULL, NULL),
 (964, NULL, 7, 1, 'expense', 8, 18, NULL, NULL, '89.91', '', 'EUR', '89.91', '2025-12-23 18:36:00', NULL, NULL),
 (965, NULL, 7, 2, 'income', 2, 16, NULL, NULL, '92.76', 'Équilibrage de compte', 'EUR', '92.76', '2025-12-29 22:01:00', NULL, NULL),
 (971, NULL, 7, 1, 'expense', 8, 356, NULL, NULL, '47.22', 'Médicament', 'EUR', '47.22', '2025-12-31 23:45:00', NULL, NULL),
-(972, NULL, 7, 1, 'expense', 1, 13, NULL, NULL, '2.25', '', 'EUR', '2.25', '2026-01-13 08:06:00', NULL, NULL),
-(973, NULL, 7, 3, 'Epargne', 13, 351, 'Objectif', 'Livret A', '77.00', '', 'EUR', '77.00', '2026-01-01 23:00:00', NULL, NULL),
+(972, NULL, 7, 1, 'expense', 1, 13, 'Charge fixe', 'Assurance bancaire', '2.25', NULL, 'EUR', '2.25', '2026-01-19 07:23:00', NULL, NULL),
 (982, NULL, 7, 1, 'expense', 5, 340, 'Famille SN', 'Mamadou Ndiongue', '16.73', 'Médicament ', 'EUR', '16.73', '2026-01-02 15:36:00', NULL, NULL),
-(984, NULL, 7, 1, 'expense', 5, 20, 'Famille SN', 'Tante Alimatou', '153.94', '', 'EUR', '153.94', '2026-01-03 20:21:00', NULL, NULL),
-(985, NULL, 7, 2, 'income', 2, 16, NULL, NULL, '99.00', 'Recup livret A', 'EUR', '99.00', '2026-01-03 21:23:00', NULL, NULL);
+(992, NULL, 7, 1, 'expense', 5, 20, NULL, NULL, '153.94', '', 'EUR', '153.94', '2026-01-03 20:39:00', NULL, NULL),
+(994, NULL, 7, 1, 'expense', 3, 7, NULL, NULL, '30.00', '', 'EUR', '30.00', '2026-01-05 17:53:00', NULL, NULL),
+(998, NULL, 7, 1, 'expense', 1, 5, NULL, NULL, '72.99', 'Frais d’abonnement et 1ere facture ', 'EUR', '72.99', '2026-01-08 07:03:00', NULL, NULL),
+(1013, NULL, 7, 1, 'expense', 3, 7, NULL, NULL, '7.90', 'Carrefour', 'EUR', '7.90', '2025-12-28 08:30:00', NULL, NULL),
+(1014, NULL, 7, 1, 'expense', 1, 6, NULL, NULL, '5.49', NULL, 'EUR', '5.49', '2026-01-24 08:27:00', NULL, NULL),
+(1017, NULL, 7, 1, 'expense', 3, 7, 'Nourritures', 'Courses', '4.85', 'Carrefour', 'EUR', '4.85', '2026-01-16 14:01:00', NULL, NULL),
+(1019, NULL, 7, 1, 'expense', 1, 15, NULL, NULL, '6.99', 'Amazon Prime', 'EUR', '6.99', '2026-01-22 18:55:00', NULL, NULL),
+(1025, NULL, 7, 1, 'expense', 8, 18, NULL, NULL, '428.35', NULL, 'EUR', '428.35', '2026-01-26 18:50:00', NULL, NULL),
+(1026, NULL, 7, 1, 'expense', 5, 11, NULL, NULL, '458.51', NULL, 'EUR', '458.51', '2026-01-26 18:54:00', NULL, NULL),
+(1027, NULL, 7, 1, 'expense', 5, 19, NULL, NULL, '75.46', 'Frais déménagement', 'EUR', '75.46', '2026-01-26 18:58:00', NULL, NULL),
+(1028, NULL, 7, 2, 'income', 2, 2, 'Revenus', 'Salaire', '2487.44', NULL, 'EUR', '2487.44', '2026-01-26 14:05:00', NULL, NULL),
+(1029, NULL, 7, 2, 'income', 2, 361, 'Revenus', 'Rachat CET', '1000.00', 'Vente de 10 CET', 'EUR', '1000.00', '2026-01-26 14:06:00', NULL, NULL),
+(1031, NULL, 7, 1, 'expense', 1, 5, NULL, NULL, '23.99', NULL, 'EUR', '23.99', '2026-02-05 11:00:00', NULL, NULL),
+(1032, NULL, 7, 1, 'expense', 3, 8, NULL, NULL, '60.00', '— Ticket Ô', 'EUR', '60.00', '2026-02-01 07:26:00', NULL, NULL),
+(1034, NULL, 7, 1, 'expense', 8, 356, NULL, NULL, '70.09', 'Vous avez envoyé 68,60 € à Adama Diaw', 'EUR', '70.09', '2026-01-27 18:33:00', NULL, NULL),
+(1036, NULL, 7, 3, 'Epargne', 13, 357, 'Objectif', 'Epargne de sécurité', '1330.12', NULL, 'EUR', '1330.12', '2026-01-27 17:55:00', NULL, NULL),
+(1037, NULL, 7, 1, 'expense', 5, 337, NULL, NULL, '24.36', 'Vous avez envoyé 22,87 € à Aichatou Ndiongue', 'EUR', '24.36', '2026-01-28 11:30:00', NULL, NULL),
+(1042, NULL, 7, 1, 'expense', 4, 22, 'Perso', 'Perso', '103.20', 'Complément financement CPF', 'EUR', '103.20', '2026-01-28 21:16:00', NULL, NULL),
+(1043, NULL, 7, 1, 'expense', 4, 348, NULL, NULL, '80.00', NULL, 'EUR', '80.00', '2026-01-28 22:49:00', NULL, NULL),
+(1044, NULL, 15, 2, 'income', 2, 2, NULL, NULL, '1000.00', NULL, 'EUR', '1000.00', '2026-01-29 10:53:00', NULL, NULL),
+(1059, NULL, 15, 3, 'epargne', 13, 362, NULL, NULL, '200.00', NULL, 'EUR', '200.00', '2026-01-30 06:45:00', NULL, NULL),
+(1060, NULL, 15, 1, 'expense', 1, 1, NULL, NULL, '550.00', NULL, 'EUR', '550.00', '2026-01-30 06:45:00', NULL, NULL),
+(1061, NULL, 7, 2, 'income', 2, 33, NULL, NULL, '99.00', NULL, 'EUR', '99.00', '2026-01-23 13:36:00', NULL, NULL),
+(1062, NULL, 7, 1, 'expense', 3, 7, 'Nourritures', 'Courses', '30.39', 'MARKET LE MANS BONNETABLE', 'EUR', '30.39', '2026-02-01 11:51:00', NULL, NULL),
+(1065, NULL, 7, 1, 'expense', 3, 7, 'Nourritures', 'Courses', '9.49', NULL, 'EUR', '9.49', '2026-02-01 08:36:00', NULL, NULL),
+(1070, NULL, 7, 2, 'income', 2, 2, 'Revenus', 'Salaire', '2355.00', NULL, 'EUR', '2355.00', '2026-02-25 08:04:00', NULL, NULL),
+(1071, NULL, 7, 3, 'epargne', NULL, 357, NULL, NULL, '-100.00', 'Retrait objectif #4', 'EUR', '-100.00', '2026-02-02 06:00:11', NULL, NULL),
+(1072, NULL, 7, 1, 'expense', 4, 348, NULL, NULL, '100.00', NULL, 'EUR', '100.00', '2026-02-02 06:01:00', NULL, NULL),
+(1073, NULL, 7, 1, 'expense', 5, 333, NULL, NULL, '9.11', 'Vous avez envoyé 7,62 € à Pape Sidy', 'EUR', '9.11', '2026-02-03 13:16:00', NULL, NULL),
+(1074, NULL, 7, 1, 'expense', 5, 342, NULL, NULL, '9.11', 'Vous avez envoyé 7,62 € à Fatou Diassy', 'EUR', '9.11', '2026-02-03 13:07:00', NULL, NULL),
+(1075, NULL, 7, 2, 'income', 2, 16, NULL, NULL, '12.25', 'Remboursement free mobile', 'EUR', '12.25', '2026-02-03 13:55:00', NULL, NULL),
+(1076, NULL, 7, 1, 'expense', 3, 7, NULL, NULL, '34.97', 'MARKET LE MANS BONNETABLE\nTitre restaurant(2', 'EUR', '34.97', '2026-02-07 11:30:00', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1543,9 +1660,29 @@ CREATE TABLE `transaction_files` (
 --
 
 INSERT INTO `transaction_files` (`id`, `transaction_id`, `file_path`, `file_type`, `uploaded_at`) VALUES
-(15, 958, 'uploads/invoices/958_6952e507751d2_IMG_3974.jpeg', 'image/jpeg', '2025-12-29 20:31:03'),
-(16, 982, 'uploads/invoices/982_6957f430d5a42_SendwaveReceipt_2026_01_02.pdf', 'application/pdf', '2026-01-02 16:37:04'),
-(17, 984, 'uploads/invoices/984_695988b173a84_Tante Alimatou.pdf', 'application/pdf', '2026-01-03 21:22:57');
+(5, 663, 'uploads/invoices/663_68d6652636f50_AD-SendwaveReceipt_2025_09_26.pdf', 'application/pdf', '2025-09-26 12:04:22'),
+(6, 664, 'uploads/invoices/664_68d6668cc6677_FS-SendwaveReceipt_2025_09_25.pdf', 'application/pdf', '2025-09-26 12:10:20'),
+(7, 666, 'uploads/invoices/666_68d6a3fdc72d6_ticket-PAYFIP0000000151068377.pdf', 'application/pdf', '2025-09-26 16:32:29'),
+(8, 667, 'uploads/invoices/667_68d7f55546ac6_IMG_3614.png', 'image/png', '2025-09-27 16:31:49'),
+(9, 668, 'uploads/invoices/668_68d834d567d44_SD-SendwaveReceipt_2025_09_27.pdf', 'application/pdf', '2025-09-27 21:02:45'),
+(10, 669, 'uploads/invoices/669_68d8371058e82_Salaire du 09 2025.pdf', 'application/pdf', '2025-09-27 21:12:16'),
+(11, 670, 'uploads/invoices/670_68d83890ceb86_Ticker-resto-09-2025.PNG', 'image/png', '2025-09-27 21:18:40'),
+(12, 671, 'uploads/invoices/671_68da3afe22265_AD_SendwaveReceipt_2025_09_28.pdf', 'application/pdf', '2025-09-29 09:53:34'),
+(13, 674, 'uploads/invoices/674_68dccb3a8a173_MP-SendwaveReceipt_2025_10_01.pdf', 'application/pdf', '2025-10-01 08:33:30'),
+(14, 675, 'uploads/invoices/675_68dccb5c108c7_FOND-SendwaveReceipt_2025_10.pdf', 'application/pdf', '2025-10-01 08:34:04'),
+(18, 992, 'uploads/invoices/992_695a7bcf7ed37_Tante Alimatou.pdf', 'application/pdf', '2026-01-04 14:40:15'),
+(31, 1013, 'uploads/invoices/1013_696407f6ca1ad_receipt.jpg', 'image/jpeg', '2026-01-11 20:28:38'),
+(34, 1017, 'uploads/invoices/1017_696bd4dfa597d_receipt.jpg', 'image/jpeg', '2026-01-17 18:28:47'),
+(35, 1025, 'uploads/invoices/1025_6977b7b69bc10_receipt.jpg', 'image/png', '2026-01-26 18:51:34'),
+(36, 1026, 'uploads/invoices/1026_6977b909108a8_receipt.jpg', 'image/png', '2026-01-26 18:57:13'),
+(38, 1032, 'uploads/invoices/1032_697869381463f_receipt.jpg', 'image/jpeg', '2026-01-27 07:28:56'),
+(39, 1034, 'uploads/invoices/1034_697905121cfd8_receipt.jpg', 'image/jpeg', '2026-01-27 18:33:54'),
+(40, 1037, 'uploads/invoices/1037_697a0232ac57c_receipt.jpg', 'image/jpeg', '2026-01-28 12:33:54'),
+(41, 1042, 'uploads/invoices/1042_697a925a54846_receipt.jpg', 'image/png', '2026-01-28 22:48:58'),
+(42, 1062, 'uploads/invoices/1062_697cb42714d99_receipt.jpg', 'image/jpeg', '2026-01-30 13:37:43'),
+(43, 1073, 'uploads/invoices/1073_6982492ead112_receipt.jpg', 'image/jpeg', '2026-02-03 19:14:54'),
+(44, 1074, 'uploads/invoices/1074_698249783e4f3_receipt.jpg', 'image/jpeg', '2026-02-03 19:16:08'),
+(45, 1076, 'uploads/invoices/1076_69874c85a5abb_receipt.jpg', 'image/jpeg', '2026-02-07 14:30:29');
 
 -- --------------------------------------------------------
 
@@ -1581,16 +1718,18 @@ CREATE TABLE `utilisateurs` (
   `email` varchar(255) NOT NULL,
   `photo` varchar(255) DEFAULT NULL,
   `mot_de_passe` varchar(255) NOT NULL,
-  `date_inscription` datetime NOT NULL DEFAULT current_timestamp()
+  `date_inscription` datetime NOT NULL DEFAULT current_timestamp(),
+  `currency` varchar(3) NOT NULL DEFAULT 'EUR'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `utilisateurs`
 --
 
-INSERT INTO `utilisateurs` (`id_utilisateur`, `lastName`, `firstName`, `email`, `photo`, `mot_de_passe`, `date_inscription`) VALUES
-(7, 'Ndiongue', 'Omar', 'omarndiongue0@gmail.com', 'uploads/profiles/1760201123_e42ff6439872_avatar.jpg', '$2y$10$PFaWUZw/aEbo9WjsLe0iZOGeDFX2hjFolguoHlzZ2DcPIzH2jK9Qa', '2023-01-28 07:40:45'),
-(12, 'Diaw', 'Maman Adaam', 'adamadiaw260@gmail.com', NULL, '$2y$10$UYfsPsngxGQXJNY0sZkGROryGt3asUKLsB4fg4hKtOv2cKa3sCgj6', '2025-12-28 15:48:38');
+INSERT INTO `utilisateurs` (`id_utilisateur`, `lastName`, `firstName`, `email`, `photo`, `mot_de_passe`, `date_inscription`, `currency`) VALUES
+(7, 'Ndiongue', 'Omar', 'omarndiongue0@gmail.com', 'uploads/profiles/1760201123_e42ff6439872_avatar.jpg', '$2y$10$PFaWUZw/aEbo9WjsLe0iZOGeDFX2hjFolguoHlzZ2DcPIzH2jK9Qa', '2023-01-28 07:40:45', 'EUR'),
+(12, 'Diaw', 'Maman Adaam', 'adamadiaw260@gmail.com', NULL, '$2y$10$UYfsPsngxGQXJNY0sZkGROryGt3asUKLsB4fg4hKtOv2cKa3sCgj6', '2025-12-28 15:48:38', 'EUR'),
+(15, 'Test', 'Testeur', 'teste@gmail.com', NULL, '$2y$10$hb569.cJn565Ct2uWbolweL09.f4jIcXwLDVCbxCgPcMgQqVKT8nS', '2026-01-29 10:53:37', 'EUR');
 
 --
 -- Index pour les tables déchargées
@@ -1681,7 +1820,7 @@ ALTER TABLE `utilisateurs`
 -- AUTO_INCREMENT pour la table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `id_category` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id_category` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT pour la table `category_budgets`
@@ -1693,31 +1832,37 @@ ALTER TABLE `category_budgets`
 -- AUTO_INCREMENT pour la table `objectif_atteints`
 --
 ALTER TABLE `objectif_atteints`
-  MODIFY `id_objectif_atteint` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_objectif_atteint` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT pour la table `ocr_feedback`
+--
+ALTER TABLE `ocr_feedback`
+  MODIFY `id_feedback` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `recurring_transactions`
 --
 ALTER TABLE `recurring_transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT pour la table `subcategories`
 --
 ALTER TABLE `subcategories`
-  MODIFY `id_subcategory` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=360;
+  MODIFY `id_subcategory` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=364;
 
 --
 -- AUTO_INCREMENT pour la table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `id_transaction` int(3) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=987;
+  MODIFY `id_transaction` int(3) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1077;
 
 --
 -- AUTO_INCREMENT pour la table `transaction_files`
 --
 ALTER TABLE `transaction_files`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
 
 --
 -- AUTO_INCREMENT pour la table `transaction_types`
@@ -1729,7 +1874,7 @@ ALTER TABLE `transaction_types`
 -- AUTO_INCREMENT pour la table `utilisateurs`
 --
 ALTER TABLE `utilisateurs`
-  MODIFY `id_utilisateur` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id_utilisateur` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- Contraintes pour les tables déchargées

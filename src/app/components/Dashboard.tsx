@@ -7,6 +7,8 @@ import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import Filters from './Filters';
 import IconFromName from './IconFromName';
 import BudgetRemainingCard from './BudgetRemainingCard';
+import FinancialHealthCard from './FinancialHealthCard';
+import FixedVsVariableExpensesCard from './FixedVsVariableExpensesCard';
 import { computeTotals, isSavingsTx } from './statsUtils';
 import { Transaction } from '../App';
 import { usePreferences } from '../contexts/PreferencesContext';
@@ -65,8 +67,47 @@ export default function Dashboard({ transactions,
     return overall;
   });
 
+  // For Revenus/Dépenses cards: apply current month/year as default filter if not explicitly set
+  const now = new Date();
+  const defaultAnnee = String(now.getFullYear());
+  const defaultMois = String(now.getMonth() + 1);
+  
+  // For current month display: include revenus/dépenses until end of month (including forecasts)
+  const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  
+  const transactionsRevenusDepenses = transactions.filter(t => {
+    const matchRecherche = matchesSearch(t, recherche);
+    const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
+    const matchType = filtreType === 'tous' || txCode === filtreType;
+    const txDate = new Date(t.date);
+    // For Revenus/Dépenses: use current month/year by default, but respect explicit filter selections
+    const effectiveAnnee = annee !== 'Tous' ? annee : defaultAnnee;
+    const effectiveMois = mois !== 'Tous' ? mois : defaultMois;
+    const matchAnnee = String(txDate.getFullYear()) === effectiveAnnee;
+    const matchMois = (txDate.getMonth() + 1) === Number(effectiveMois);
+    
+    // For current month: include transactions up to end of month (even if in future)
+    // For other months: keep strict date filtering
+    let matchDate = true;
+    if (effectiveAnnee === defaultAnnee && effectiveMois === defaultMois) {
+      // Current month: include everything until end of month
+      matchDate = txDate <= endOfCurrentMonth;
+    } else {
+      // Other months: use default behavior (only past transactions)
+      matchDate = true; // Already filtered by year/month above
+    }
+    
+    const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
+    const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
+    const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
+    const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
+    const overall = matchRecherche && matchType && matchAnnee && matchMois && matchDate && matchCategorie && matchSous;
+    return overall;
+  });
+
   // Calculs
   const totals = computeTotals(transactionsFiltrees, types);
+  const totalsRevenusDepenses = computeTotals(transactionsRevenusDepenses, types);
 
   // Additional debug: log counts per type and computed totals (mobile-only)
   // debug logging removed (totals/sample types)
@@ -80,6 +121,7 @@ export default function Dashboard({ transactions,
   const todayShortCapitalized = todayShort.replace(/\p{L}/u, c => c.toUpperCase());
 
   // Comparison labels vs previous month (respecting active filters)
+  // ALWAYS compare with previous month, regardless of filters
   const refDate = (() => {
     const now = new Date();
     let y = now.getFullYear();
@@ -90,107 +132,63 @@ export default function Dashboard({ transactions,
     if (effectiveMois && effectiveMois !== 'Tous') m = Number(effectiveMois);
     return new Date(y, m - 1, 1);
   })();
-  // Reference: monthly comparison when a month is selected, otherwise annual comparison (year-over-year)
-  const isAnnual = !mois || mois === 'Tous';
-  let prevLabelCapitalized = '';
+  
+  // Calculate previous month (always month-over-month comparison)
+  const prevDate = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
+  const prevLabel = prevDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+  const prevLabelCapitalized = prevLabel.replace(/\p{L}/u, c => c.toUpperCase());
+  
   let prevRevenus = 0;
   let prevDepenses = 0;
   let prevEpargne = 0;
 
-  if (isAnnual) {
-    const prevYear = (annee && annee !== 'Tous') ? (Number(annee) - 1) : (new Date().getFullYear() - 1);
-    prevLabelCapitalized = String(prevYear);
+  prevRevenus = transactions
+    .filter(t => {
+      const search = recherche.trim().toLowerCase();
+      const matchRecherche = search.length === 0 ? true : (t.categorie || '').toLowerCase().includes(search);
+      const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
+      const matchType = filtreType === 'tous' || txCode === filtreType;
+      const txDate = new Date(t.date);
+      const matchYear = String(txDate.getFullYear()) === String(prevDate.getFullYear());
+      const matchMonth = txDate.getMonth() === prevDate.getMonth();
+      const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
+      const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
+      const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
+      const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
+      return matchRecherche && matchType && matchYear && matchMonth && matchCategorie && matchSous;
+    })
+    .filter(t => t.type === 'revenu')
+    .reduce((s, t) => s + (t.montant ?? 0), 0);
 
-    prevRevenus = transactions
-      .filter(t => {
-        const search = recherche.trim().toLowerCase();
-        const matchRecherche = search.length === 0 ? true : (t.categorie || '').toLowerCase().includes(search);
-        const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
-        const matchType = filtreType === 'tous' || txCode === filtreType;
-        const txDate = new Date(t.date);
-        const matchYear = String(txDate.getFullYear()) === String(prevYear);
-        const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
-        const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
-        const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
-        const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
-        return matchRecherche && matchType && matchYear && matchCategorie && matchSous;
-      })
-      .filter(t => t.type === 'revenu')
-      .reduce((s, t) => s + (t.montant ?? 0), 0);
+  prevDepenses = transactions
+    .filter(t => {
+      const search = recherche.trim().toLowerCase();
+      const matchRecherche = search.length === 0 ? true : (t.categorie || '').toLowerCase().includes(search);
+      const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
+      const matchType = filtreType === 'tous' || txCode === filtreType;
+      const txDate = new Date(t.date);
+      const matchYear = String(txDate.getFullYear()) === String(prevDate.getFullYear());
+      const matchMonth = txDate.getMonth() === prevDate.getMonth();
+      const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
+      const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
+      const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
+      const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
+      return matchRecherche && matchType && matchYear && matchMonth && matchCategorie && matchSous;
+    })
+    .filter(t => t.type === 'dépense')
+    .reduce((s, t) => s + Math.abs(t.montant), 0);
 
-    prevDepenses = transactions
-      .filter(t => {
-        const search = recherche.trim().toLowerCase();
-        const matchRecherche = search.length === 0 ? true : (t.categorie || '').toLowerCase().includes(search);
-        const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
-        const matchType = filtreType === 'tous' || txCode === filtreType;
-        const txDate = new Date(t.date);
-        const matchYear = String(txDate.getFullYear()) === String(prevYear);
-        const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
-        const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
-        const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
-        const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
-        return matchRecherche && matchType && matchYear && matchCategorie && matchSous;
-      })
-      .filter(t => t.type === 'dépense')
-      .reduce((s, t) => s + Math.abs(t.montant), 0);
-
-    prevEpargne = transactions
-      .filter(t => isSavingsTx(t))
-      .filter(t => {
-        const d = new Date(t.date);
-        return d.getFullYear() === prevYear;
-      })
-      .reduce((s, t) => s + t.montant, 0);
-  } else {
-    const prevDate = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
-    const prevLabel = prevDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
-    prevLabelCapitalized = prevLabel.replace(/\p{L}/u, c => c.toUpperCase());
-
-    prevRevenus = transactions
-      .filter(t => {
-        const search = recherche.trim().toLowerCase();
-        const matchRecherche = search.length === 0 ? true : (t.categorie || '').toLowerCase().includes(search);
-        const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
-        const matchType = filtreType === 'tous' || txCode === filtreType;
-        const txDate = new Date(t.date);
-        const matchYear = String(txDate.getFullYear()) === String(prevDate.getFullYear());
-        const matchMonth = txDate.getMonth() === prevDate.getMonth();
-        const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
-        const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
-        const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
-        const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
-        return matchRecherche && matchType && matchYear && matchMonth && matchCategorie && matchSous;
-      })
-      .filter(t => t.type === 'revenu')
-      .reduce((s, t) => s + (t.montant ?? 0), 0);
-
-    prevDepenses = transactions
-      .filter(t => {
-        const search = recherche.trim().toLowerCase();
-        const matchRecherche = search.length === 0 ? true : (t.categorie || '').toLowerCase().includes(search);
-        const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
-        const matchType = filtreType === 'tous' || txCode === filtreType;
-        const txDate = new Date(t.date);
-        const matchYear = String(txDate.getFullYear()) === String(prevDate.getFullYear());
-        const matchMonth = txDate.getMonth() === prevDate.getMonth();
-        const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
-        const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
-        const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
-        const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
-        return matchRecherche && matchType && matchYear && matchMonth && matchCategorie && matchSous;
-      })
-      .filter(t => t.type === 'dépense')
-      .reduce((s, t) => s + Math.abs(t.montant), 0);
-
-    prevEpargne = transactionsFiltrees
-      .filter(t => isSavingsTx(t))
-      .filter(t => {
-        const d = new Date(t.date);
-        return d.getFullYear() === prevDate.getFullYear() && d.getMonth() === prevDate.getMonth();
-      })
-      .reduce((s, t) => s + t.montant, 0);
-  }
+  prevEpargne = transactions
+    .filter(t => isSavingsTx(t))
+    .filter(t => {
+      const d = new Date(t.date);
+      return d.getFullYear() === prevDate.getFullYear() && d.getMonth() === prevDate.getMonth();
+    })
+    .filter(t => {
+      const cat = String(t.categorie || '').toLowerCase();
+      return !cat.includes('natixis'); // Exclure l'épargne Natixis
+    })
+    .reduce((s, t) => s + t.montant, 0);
 
   const computeChangeLabel = (current: number, previous: number) => {
     if (previous === 0) return `— par rapport à ${prevLabelCapitalized}`;
@@ -199,15 +197,43 @@ export default function Dashboard({ transactions,
     return `${sign}${Math.abs(pct).toFixed(2)}% par rapport à ${prevLabelCapitalized}`;
   };
 
-  const revenusChangeLabel = computeChangeLabel(totals.revenus.real, prevRevenus);
-  const depensesChangeLabel = computeChangeLabel(totals.depenses.real, prevDepenses);
-  const totalEpargneReal = totals.epargne.real;
-  const epargneChangeLabel = computeChangeLabel(totalEpargneReal, prevEpargne);
+  // Solde total and Épargne should NOT be filtered by month/year — compute from ALL transactions
+  const totalsGlobal = computeTotals(transactions, types);
+  
+  // Calcul de l'épargne Natixis (long terme, bloquée 5 ans) - exclure du solde et du total épargne
+  const epargneLongTermeTotal = transactions
+    .filter(t => {
+      const type = String(t.type || '').toLowerCase();
+      const cat = String(t.categorie || '').toLowerCase();
+      return (type === 'epargne' || type === 'épargne' || type === 'savings') && cat.includes('natixis');
+    })
+    .reduce((sum, t) => sum + (Number(t.montant) || 0), 0);
 
-  const soldeReal = totals.revenus.real - totals.depenses.real;
-  const soldeAll = totals.revenus.total - totals.depenses.total;
-  const currentSolde = soldeReal;
-  const prevSolde = prevRevenus - prevDepenses;
+  // Épargne liquide = épargne totale - épargne long terme (Natixis)
+  const totalEpargneRealGlobal = totalsGlobal.epargne.real - epargneLongTermeTotal;
+
+  // For current month: include both real and forecast revenus (to show anticipated income)
+  // For other months: show only real transactions
+  const effectiveAnnee = annee !== 'Tous' ? annee : defaultAnnee;
+  const effectiveMois = mois !== 'Tous' ? mois : defaultMois;
+  const isCurrentMonthDisplayed = effectiveAnnee === defaultAnnee && effectiveMois === defaultMois;
+  const revenusDisplayed = isCurrentMonthDisplayed 
+    ? (totalsRevenusDepenses.revenus.real + totalsRevenusDepenses.revenus.forecast)
+    : totalsRevenusDepenses.revenus.real;
+
+  const revenusChangeLabel = computeChangeLabel(revenusDisplayed, prevRevenus);
+  const depensesChangeLabel = computeChangeLabel(totalsRevenusDepenses.depenses.real, prevDepenses);
+  const epargneChangeLabel = computeChangeLabel(totalEpargneRealGlobal, prevEpargne);
+  
+  // CORRECTION: Déduire UNIQUEMENT l'épargne liquide du solde (pas l'épargne long terme/Natixis)
+  const soldeRealGlobal = totalsGlobal.revenus.real - totalsGlobal.depenses.real - totalEpargneRealGlobal;
+  
+  // For comparison, we still use filtered values for Revenus/Dépenses
+  const soldeReal = totalsGlobal.revenus.real - totalsGlobal.depenses.real - totalEpargneRealGlobal;
+  const soldeAll = totalsGlobal.revenus.total - totalsGlobal.depenses.total - totalsGlobal.epargne.total;
+  const currentSolde = soldeRealGlobal;
+  // CORRECTION: Inclure l'épargne dans la comparaison du mois précédent aussi
+  const prevSolde = prevRevenus - prevDepenses - prevEpargne;
   const soldeChangeLabel = computeChangeLabel(currentSolde, prevSolde);
 
 
@@ -276,13 +302,64 @@ export default function Dashboard({ transactions,
 
   // Totals (split revenue / expenses) — hide revenue total per request
   const upcomingExpensesTotal = upcomingTransactions.filter(t => t.type === 'dépense').reduce((s, t) => s + Math.abs(t.montant ?? 0), 0);
+  // CORRECTION: Inclure les épargnes futures dans la déduction (prévision = solde - dépenses futures - épargnes futures LIQUIDES uniquement, pas Natixis)
+  const upcomingSavingsTotal = upcomingTransactions
+    .filter(t => isSavingsTx(t, types))
+    .filter(t => {
+      const cat = String(t.categorie || '').toLowerCase();
+      return !cat.includes('natixis'); // Exclure l'épargne Natixis
+    })
+    .reduce((s, t) => s + (t.montant ?? 0), 0);
 
-  // Forecast at end of month = current real balance minus upcoming expenses in selected month
-  const previsionFinDeMois = soldeReal - upcomingExpensesTotal;
+  // Forecast at end of month = current real balance minus upcoming expenses AND upcoming savings in selected month
+  const previsionFinDeMois = soldeReal - upcomingExpensesTotal - upcomingSavingsTotal;
+
+  // Calculate revenues by category for details (exclude Salaire)
+  const revenuesByCategory = transactionsRevenusDepenses
+    .filter(t => t.type === 'revenu' && t.subcategoryName !== 'Salaire')
+    .reduce((acc: Record<string, number>, t) => {
+      // Use subcategory name if available, otherwise use category
+      const detail = t.subcategoryName || t.categorie || 'Autre';
+      acc[detail] = (acc[detail] ?? 0) + (t.montant ?? 0);
+      return acc;
+    }, {});
+
+  // Build revenue details string (top 3 categories, sorted by amount, excluding 0€ amounts)
+  const revenueDetails = Object.entries(revenuesByCategory)
+    .filter(([, amount]) => amount > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([detail, amount]) => `${formatCurrency(amount)} de ${detail}`)
+    .join(', ');
+
+  const revenuesComparison = revenueDetails ? `dont ${revenueDetails}` : '';
+
+  // Calcul du nombre de mois restants pour débloquer l'épargne Natixis (5 ans après la transaction)
+  const natixisTransactions = transactions
+    .filter(t => {
+      const type = String(t.type || '').toLowerCase();
+      const cat = String(t.categorie || '').toLowerCase();
+      return (type === 'epargne' || type === 'épargne' || type === 'savings') && cat.includes('natixis');
+    });
+
+  let epargneComparison = '';
+  if (epargneLongTermeTotal > 0 && natixisTransactions.length > 0) {
+    const now = new Date();
+    const monthsRemaining = natixisTransactions
+      .map(t => {
+        const txDate = new Date(t.date);
+        const unlockDate = new Date(txDate.getFullYear() + 5, txDate.getMonth(), txDate.getDate());
+        const monthsDiff = (unlockDate.getFullYear() - now.getFullYear()) * 12 + (unlockDate.getMonth() - now.getMonth());
+        return Math.max(0, monthsDiff);
+      })
+      .sort((a, b) => a - b)[0]; // Prendre le minimum (première date de déblocage)
+
+    epargneComparison = `Placement disponible dans ${monthsRemaining} mois - ${formatCurrency(epargneLongTermeTotal)}`;
+  }
 
   const statsItems = [
     {
-      title: 'Solde total',
+      title: 'Solde actuel',
       value: formatCurrency(soldeReal),
       change: soldeChangeLabel,
       comparison: `Prévision en fin de mois: ${formatCurrency(previsionFinDeMois)}`,
@@ -290,13 +367,14 @@ export default function Dashboard({ transactions,
       icon: Wallet,
       gradient: 'from-blue-500 via-blue-600 to-indigo-600',
       bgGradient: 'from-blue-50 to-indigo-50',
+      valueColor: soldeReal > 0 ? 'green' as const : 'red' as const,
     },
 
     {
       title: 'Revenus',
-      value: formatCurrency(totals.revenus.real),
+      value: formatCurrency(revenusDisplayed),
       change: revenusChangeLabel,
-      comparison: '',
+      comparison: revenuesComparison,
       trend: 'up' as const,
       icon: ArrowUpRight,
       gradient: 'from-emerald-500 via-green-500 to-teal-500',
@@ -304,17 +382,17 @@ export default function Dashboard({ transactions,
     },
     {
       title: 'Épargne',
-      value: formatCurrency(totalEpargneReal),
+      value: formatCurrency(totalEpargneRealGlobal),
       change: epargneChangeLabel,
-      comparison: epargneChangeLabel,
-      trend: (totalEpargneReal >= prevEpargne) ? 'up' as const : 'down' as const,
+      comparison: epargneComparison,
+      trend: (totalEpargneRealGlobal >= prevEpargne) ? 'up' as const : 'down' as const,
       icon: TrendingUp,
       gradient: 'from-indigo-500 via-indigo-600 to-purple-600',
       bgGradient: 'from-indigo-50 to-purple-50',
     },
     {
       title: 'Dépenses',
-      value: formatCurrency(totals.depenses.real),
+      value: formatCurrency(totalsRevenusDepenses.depenses.real),
       change: depensesChangeLabel,
       comparison: '',
       trend: 'down' as const,
@@ -396,82 +474,87 @@ export default function Dashboard({ transactions,
       </div>
 
       {/* Graphiques */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Graphique principal */}
-        <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--card-shadow)', border: '1px solid var(--border)', borderRadius: 'var(--card-border-radius)' }}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h3 className="font-bold text-sm">Transaction à venir <span className="ml-2 text-sm font-medium text-gray-500">— {upcomingMonthLabelCapitalized}</span></h3>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        {/* Financial Health Score - First position */}
+        <div>
+          <FinancialHealthCard
+            transactions={transactionsFiltrees}
+            totalsRevenusDepenses={totalsRevenusDepenses}
+            soldeReal={soldeReal}
+            tauxEpargne={tauxEpargne}
+            epargneReal={totalEpargneRealGlobal}
+            locale={locale}
+          />
+        </div>
+
+        {/* Transactions à venir */}
+        <div tabIndex={0} className="group relative bg-white rounded-2xl md:rounded-3xl shadow-lg border border-gray-200 p-5 md:p-6 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col h-96 lg:h-auto lg:min-h-80">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-cyan-50 opacity-0 group-hover:opacity-100 group-active:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300" />
+          
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="mb-4 md:mb-5">
+              <div className="flex-1">
+                <h3 className="text-base md:text-lg font-bold text-gray-900 mb-1">Transaction à venir</h3>
+                <p className="text-xs md:text-sm text-gray-500">— {upcomingMonthLabelCapitalized}</p>
+              </div>
             </div>
-            <div className="flex gap-3 items-center text-xs">
-              <span className="text-gray-600">{upcomingTransactions.length} prévues {upcomingTransactions.length > 0 ? <span className="text-gray-600">({formatCurrency(upcomingExpensesTotal)})</span> : null}</span>
+            <div className="absolute top-0 right-0 w-8 h-8 md:w-9 md:h-9 rounded-lg bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-600 flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-110 group-hover:rotate-3">
+              <Calendar size={16} className="text-white" />
+            </div>
+            
+            <div className="overflow-y-auto flex-1 pr-2 max-h-60 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-lg hover:[&::-webkit-scrollbar-thumb]:bg-gray-500">
+              <div className="space-y-2">
+                {upcomingTransactions.length === 0 ? (
+                  <p className="text-sm text-gray-500">Aucune transaction prévue pour le reste du mois.</p>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-gray-700 mb-3">{upcomingTransactions.length} prévues ({formatCurrency(upcomingExpensesTotal)})</p>
+                    {upcomingTransactions.map(tx => {
+                      const subName = (tx as any).subcategoryName ?? (tx as any).subCategory ?? tx.categorie;
+                      return (
+                        <div key={tx.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ backgroundColor: tx.type === 'revenu' ? 'var(--card-bg-revenu)' : tx.type === 'dépense' ? 'var(--card-bg-depense)' : 'var(--card-bg-epargne)', color: tx.type === 'revenu' ? 'var(--color-revenu)' : tx.type === 'dépense' ? 'var(--color-depense)' : 'var(--color-epargne)' }}>
+                              <IconFromName name={tx.subcategory_icon} fallback={tx.emoji || '📅'} size={18} />
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">{subName}</p>
+                              <p className="text-xs text-gray-500">{new Date(tx.date).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="font-bold text-sm" style={{ color: tx.type === 'dépense' ? 'var(--color-depense)' : 'var(--color-revenu)' }}>
+                              {tx.type === 'revenu' ? '+' : ''}{formatCurrency(tx.montant)}
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-500">
+                              <button onClick={()=>openEdit(tx)} title="Modifier" className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-md hover:bg-gray-50"><Edit3 size={16} /></button>
+                              <button onClick={()=>confirmDelete(tx.id)} title="Supprimer" className="min-h-[32px] min-w-[32px] flex items-center justify-center text-red-600 rounded-md hover:bg-red-50"><Trash2 size={16} /></button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
             </div>
           </div>
-          <div className="h-48 overflow-y-auto">
-            <div className="space-y-2">
-              {upcomingTransactions.length === 0 ? (
-                <p className="text-sm text-gray-500">Aucune transaction prévue pour le reste du mois.</p>
-              ) : (
-                upcomingTransactions.map(tx => {
-                  const subName = (tx as any).subcategoryName ?? (tx as any).subCategory ?? (tx as any).subCategory ?? tx.categorie;
-                  return (
-                    <div key={tx.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ backgroundColor: tx.type === 'revenu' ? 'var(--card-bg-revenu)' : tx.type === 'dépense' ? 'var(--card-bg-depense)' : 'var(--card-bg-epargne)', color: tx.type === 'revenu' ? 'var(--color-revenu)' : tx.type === 'dépense' ? 'var(--color-depense)' : 'var(--color-epargne)' }}>
-                          <IconFromName name={tx.subcategory_icon} fallback={tx.emoji || '📅'} size={18} />
-                        </div>
-                        <div>
-                          <p className="font-medium">{subName}</p>
-                          <p className="text-sm text-gray-500">{new Date(tx.date).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="font-bold" style={{ color: tx.type === 'dépense' ? 'var(--color-depense)' : 'var(--color-revenu)' }}>
-                          {tx.type === 'revenu' ? '+' : ''}{formatCurrency(tx.montant)}
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-500">
-                          <button onClick={()=>openEdit(tx)} title="Modifier" className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-gray-50"><Edit3 size={18} /></button>
-                          <button onClick={()=>confirmDelete(tx.id)} title="Supprimer" className="min-h-[44px] min-w-[44px] flex items-center justify-center text-red-600 rounded-md hover:bg-red-50"><Trash2 size={18} /></button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+          
+          <div className="absolute -right-3 -bottom-3 w-16 h-16 md:w-24 md:h-24 md:-right-6 md:-bottom-6 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-600 opacity-5 group-hover:opacity-10 transition-opacity" />
         </div>  
 
 
 
         {editing && (<EditTransactionModal open={!!editing} transaction={editing} onClose={closeEdit} onSave={async (payload)=>{ if (!onEdit) { console.warn('onEdit handler not provided'); closeEdit(); return; } try { await onEdit(payload); } catch (e) { console.error('save edit error', e); } closeEdit(); }} types={types} categories={categories} subcategories={subcategories} />)}
-        {/* Top catégories */}
-        <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--card-shadow)', border: '1px solid var(--border)', borderRadius: 'var(--card-border-radius)' }}>
-          <h3 className="font-bold text-sm mb-4">Top Catégories</h3>
-          <div className="space-y-4">
-            {categoriesData.map((cat, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: COLORS[index] + '20' }}>
-                  {cat.emoji}
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium">{cat.categorie}</span>
-                    <span className="text-sm font-bold">{formatCurrency(cat.montant)}</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full rounded-full transition-all"
-                      style={{ 
-                        width: `${(cat.montant / (totals.depenses.real || 1)) * 100}%`,
-                        backgroundColor: COLORS[index]
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+        
+        {/* Dépenses fixes vs variables - replaces Top catégories */}
+        <div>
+          <FixedVsVariableExpensesCard 
+            transactions={transactions}
+            locale={locale}
+            annee={annee}
+            mois={mois}
+          />
         </div>
 
         {/* Budget remaining (new) */}
@@ -479,48 +562,12 @@ export default function Dashboard({ transactions,
           {/* @ts-ignore */}
           <BudgetRemainingCard
             recherche={recherche}
-            // Force the budget remaining card to always use the current month
-            annee={String(endOfToday.getFullYear())}
-            mois={String(endOfToday.getMonth() + 1)}
+            annee={annee}
+            mois={mois}
             filtreType={filtreType}
             categorie={categorie}
             sousCategorie={sousCategorie}
           />
-        </div>
-
-        {/* Transactions récentes (moved into grid) */}
-        <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--card-shadow)', border: '1px solid var(--border)', borderRadius: 'var(--card-border-radius)' }}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-sm">Transactions récentes</h3>
-            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">Voir tout</button>
-          </div>
-          <div className="h-48 overflow-y-auto">
-            <div className="space-y-2">
-              {transactions.slice(0, 20).map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ backgroundColor: transaction.type === 'revenu' ? 'var(--card-bg-revenu)' : transaction.type === 'dépense' ? 'var(--card-bg-depense)' : 'var(--card-bg-epargne)', color: transaction.type === 'revenu' ? 'var(--color-revenu)' : transaction.type === 'dépense' ? 'var(--color-depense)' : 'var(--color-epargne)' }}>
-                    <IconFromName name={transaction.subcategory_icon} fallback={transaction.emoji || '💰'} size={18} />
-                    </div>
-                    <div>
-                      <p className="font-medium">{transaction.subcategoryName ?? transaction.categorie}</p>
-                      {transaction.subcategoryName ? <p className="text-sm text-gray-500">{transaction.categorie}</p> : null}
-                      <p className="text-sm text-gray-500">
-                        {new Date(transaction.date).toLocaleDateString(locale, {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="font-bold" style={{ color: transaction.type === 'dépense' ? 'var(--color-depense)' : 'var(--color-revenu)' }}>
-                    {transaction.type === 'revenu' ? '+' : ''}{formatCurrency(transaction.montant)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 

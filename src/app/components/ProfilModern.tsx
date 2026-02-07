@@ -1,4 +1,4 @@
-import { User, Mail, Bell, Lock, Download, Upload, CreditCard, Moon, Globe, LogOut, ChevronRight } from 'lucide-react';
+import { User, Mail, Bell, Lock, Download, Upload, CreditCard, Moon, Globe, LogOut, ChevronRight, RefreshCw } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import * as api from '../../services/api';
 import { addCsrfToBody } from '../../services/csrf';
@@ -9,6 +9,7 @@ export default function ProfilModern({ theme, setTheme, currentUser, setCurrentU
   const { locale, currency, setLocale, setCurrency } = usePreferences();
   const [converting, setConverting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [creatingRecurring, setCreatingRecurring] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const API_BASE = ((import.meta as any).env?.VITE_API_BASE_URL) ?? '';
 
@@ -32,6 +33,25 @@ export default function ProfilModern({ theme, setTheme, currentUser, setCurrentU
       alert('Erreur réseau pendant le téléversement');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleCreateRecurringTransactions = async () => {
+    setCreatingRecurring(true);
+    try {
+      const res = await api.runRecurringTransactions();
+      if (res.ok && res.data && res.data.success) {
+        const count = res.data.created ? res.data.created.length : 0;
+        alert(`✅ ${count} transaction(s) récurrente(s) créée(s)!`);
+      } else {
+        const errorMsg = res?.data?.message || res?.data?.error || 'Erreur inconnue';
+        alert('⚠️ Erreur: ' + errorMsg);
+      }
+    } catch (e) {
+      console.error('create recurring failed', e);
+      alert('❌ Erreur réseau lors de la création des transactions récurrentes');
+    } finally {
+      setCreatingRecurring(false);
     }
   }; 
 
@@ -377,14 +397,14 @@ export default function ProfilModern({ theme, setTheme, currentUser, setCurrentU
             Gestion des données
           </h3>
           <div className="space-y-3">
-            <button className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors group">
+            <button onClick={handleCreateRecurringTransactions} disabled={creatingRecurring} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors group disabled:opacity-50 disabled:cursor-not-allowed">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--card-bg-revenu)', color: 'var(--color-revenu)' }}>
-                  <Download size={18} style={{ color: 'var(--color-revenu)' }} />
+                  <RefreshCw size={18} style={{ color: 'var(--color-revenu)', animation: creatingRecurring ? 'spin 1s linear infinite' : 'none' }} />
                 </div>
                 <div className="text-left">
-                  <p className="font-medium text-sm">Exporter les données</p>
-                  <p className="text-xs text-gray-500">CSV, Excel, PDF</p>
+                  <p className="font-medium text-sm">{creatingRecurring ? 'Création en cours...' : 'Créer les transactions récurrentes'}</p>
+                  <p className="text-xs text-gray-500">{creatingRecurring ? 'Génération des occurrences...' : 'Générer les occurrences manquantes'}</p>
                 </div>
               </div>
               <ChevronRight size={20} className="text-gray-400 group-hover:text-gray-600" />

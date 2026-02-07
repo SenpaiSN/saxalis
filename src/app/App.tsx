@@ -262,14 +262,15 @@ function App() {
             id: String(tx.id_transaction),
             montant: parseFloat(tx.amount),
             type: tx.type === 'expense' ? 'dépense' : (tx.type === 'income' ? 'revenu' : tx.type),
-            categorie: tx.category || tx.subCategory || 'Autre',
+            categorie: tx.category ?? 'Autre', // Use category name, not subcategory
             date: tx.date,
             note: tx.notes || '',
             emoji: undefined,
             subcategoryId: tx.id_subcategory ?? null,
             subcategory_icon: tx.subcategory_icon ?? null,
             subcategoryName: tx.subCategory ?? null,
-            invoices: invoiceList
+            invoices: invoiceList,
+            is_fixed: tx.is_fixed // <-- Ajout du champ pour la classification
           };
         }) as Transaction[];
 

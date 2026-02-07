@@ -18,7 +18,7 @@ export default function SavingsChart({ data, formatCurrency, monthlySavings = []
 
   // show a tick for every month on the savings chart
   const savingsTicksIndices = data.map((s, i) => i);
-  const savingsTickProps = data.length > 6 ? { fontSize: 11, angle: -45 as const, textAnchor: 'end' as const } : { fontSize: 12 };
+  const savingsTickProps = data.length > 6 ? { fontSize: 9, angle: -45 as const, textAnchor: 'end' as const } : { fontSize: 10 };
   const hasValidSavingsAxis = data.length > 1 && savingsTicksIndices.length > 0 && typeof (data[0] as any)?.index === 'number';
 
   const domAxesHaveTicks = () => {
@@ -35,7 +35,7 @@ export default function SavingsChart({ data, formatCurrency, monthlySavings = []
   return (
     <div ref={containerRef} style={{ height: '100%' }}>
       <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 0, right: 8, left: -12, bottom: 0 }}>
+      <LineChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="realGradient" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#10b981" stopOpacity={0.18} />
@@ -65,7 +65,7 @@ export default function SavingsChart({ data, formatCurrency, monthlySavings = []
             return data[idx]?.name ?? '';
           }}
         />
-        <YAxis yAxisId={0} stroke="#9ca3af" tickFormatter={(v)=>formatCurrency(Number(v))} />
+        <YAxis yAxisId={0} stroke="#9ca3af" tick={{ fontSize: 10, angle: 0, textAnchor: 'end' }} tickFormatter={(v)=>Math.round(Number(v)).toLocaleString('fr-FR')} />
           <Tooltip
             formatter={(value: any) => typeof value === 'number' ? formatCurrency(Number(value)) : String(value)}
             labelFormatter={(idx:any) => (typeof idx === 'number' ? (data[idx]?.name ?? String(idx)) : String(idx))}

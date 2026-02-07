@@ -59,17 +59,14 @@ try {
     exit;
   }
 
-  // Calculate deposits (id_type = 3) into the subcategory
+  // Calculate net savings (deposits and withdrawals both id_type = 3) into the subcategory
+  // Deposits are positive, withdrawals are stored as negative montants
   $stmt = $pdo->prepare("SELECT COALESCE(SUM(Montant),0) FROM transactions WHERE subcategory_id = :subcat AND id_type = 3 AND id_utilisateur = :uid");
   $stmt->execute([':subcat' => $obj['id_subcategory'], ':uid' => $uid]);
-  $totalDeposits = (float)$stmt->fetchColumn();
+  $availableNet = (float)$stmt->fetchColumn();
 
-  // Calculate previous withdrawals linked to this objectif (id_type = 1 and goal_id = obj.id_objectif)
-  $stmt = $pdo->prepare("SELECT COALESCE(SUM(Montant),0) FROM transactions WHERE goal_id = :gid AND id_type = 1 AND id_utilisateur = :uid");
-  $stmt->execute([':gid' => $goal_id, ':uid' => $uid]);
-  $totalWithdrawn = (float)$stmt->fetchColumn();
-
-  $available = $totalDeposits - $totalWithdrawn;
+  // available is the net (already includes negative withdrawals)
+  $available = $availableNet;
 
   if ($montant > $available) {
     http_response_code(400);
@@ -77,34 +74,25 @@ try {
     exit;
   }
 
-  // Lookup type code for the provided id_type (fallback to 'expense')
-  $typeCode = 'expense';
-  try {
-    $tstmt = $pdo->prepare("SELECT code FROM transaction_types WHERE id_type = :id LIMIT 1");
-    $tstmt->execute([':id' => $id_type]);
-    $row = $tstmt->fetch(PDO::FETCH_ASSOC);
-    if ($row && !empty($row['code'])) $typeCode = $row['code'];
-  } catch (PDOException $e) {
-    // ignore and fallback
-  }
-
-  // Insert expense transaction linked to objectif (set goal_id to id_objectif so it will be accounted as withdrawal)
-  $txSql = "INSERT INTO transactions (id_utilisateur, id_type, `Date`, `Type`, category_id, subcategory_id, Montant, Notes, goal_id, currency, Montant_eur) VALUES (:uid, :idType, :date, :type, :cat, :subcat, :amount, :notes, :goal_id, :currency, :amount_eur)";
+  // CORRECTION: Enregistrer le retrait comme épargne négative (id_type=3, montant négatif)
+  // Cela réduit l'épargne sans affecter les dépenses (solde = revenus - dépenses - épargne nette)
+  // Les retraits d'objectifs ne sont PAS des dépenses, c'est une déduction d'épargne
+  
+  $txSql = "INSERT INTO transactions (id_utilisateur, id_type, `Date`, `Type`, category_id, subcategory_id, Montant, Notes, currency, Montant_eur) VALUES (:uid, :idType, :date, :type, :cat, :subcat, :amount, :notes, :currency, :amount_eur)";
   $txStmt = $pdo->prepare($txSql);
 
   $currency = 'EUR';
-  $amount_eur = $montant;
+  $amount_eur = -$montant;  // Montant négatif pour réduire l'épargne
 
   $txStmt->execute([
     ':uid' => $uid,
-    ':idType' => $id_type,
+    ':idType' => 3,  // Épargne, pas dépense
     ':date' => $date,
-    ':type' => $typeCode,
-    ':cat' => $category_id !== null ? $category_id : null,
-    ':subcat' => $subcategory_id !== null ? $subcategory_id : null,
-    ':amount' => $montant,
+    ':type' => 'epargne',  // Type épargne
+    ':cat' => null,  // Pas de catégorie pour les retraits
+    ':subcat' => $obj['id_subcategory'],  // La sous-catégorie de l'objectif
+    ':amount' => -$montant,  // Montant négatif
     ':notes' => $notes ?? "Retrait objectif #{$goal_id}",
-    ':goal_id' => $goal_id,
     ':currency' => $currency,
     ':amount_eur' => $amount_eur
   ]);

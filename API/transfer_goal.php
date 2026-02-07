@@ -58,16 +58,10 @@ try {
     exit;
   }
 
-  // Calculate available on source using transactions (deposits id_type=3 into subcategory, minus withdrawals id_type=1 goal_id)
+  // Calculate available on source using transactions (deposits id_type=3 into subcategory, minus withdrawals id_type=3 with negative montant)
   $stmt = $pdo->prepare("SELECT COALESCE(SUM(Montant),0) FROM transactions WHERE subcategory_id = :subcat AND id_type = 3 AND id_utilisateur = :uid");
   $stmt->execute([':subcat' => $fromObj['id_subcategory'], ':uid' => $uid]);
-  $totalDeposits = (float)$stmt->fetchColumn();
-
-  $stmt = $pdo->prepare("SELECT COALESCE(SUM(Montant),0) FROM transactions WHERE goal_id = :gid AND id_type = 1 AND id_utilisateur = :uid");
-  $stmt->execute([':gid' => $from_goal, ':uid' => $uid]);
-  $totalWithdrawn = (float)$stmt->fetchColumn();
-
-  $available = $totalDeposits - $totalWithdrawn;
+  $available = (float)$stmt->fetchColumn();
 
   if ($montant > $available) {
     http_response_code(400);

@@ -11,7 +11,7 @@ $uid = current_user_id();
 
 try {
   // Return objectifs_crees mapped to a 'goals' structure for backwards compatibility
-  // Use transactions for deposits (id_type=3 into the objectif subcategory) and withdrawals (transactions with goal_id)
+  // Use transactions for deposits (id_type=3 into the objectif subcategory) and withdrawals (id_type=3 with negative montant)
   $sql = "
     SELECT
       o.id_objectif AS id,
@@ -20,18 +20,18 @@ try {
       DATE(o.date_depot) AS date_creation,
       NULL AS date_cible,
       NULL AS type_nom,
-      COALESCE((SELECT SUM(Montant) FROM transactions WHERE subcategory_id = o.id_subcategory AND id_type = 3 AND id_utilisateur = :uid), 0) AS total_deposits,
-      COALESCE((SELECT SUM(Montant) FROM transactions WHERE goal_id = o.id_objectif AND id_type = 1 AND id_utilisateur = :uid), 0) AS total_withdrawn,
-      (COALESCE((SELECT SUM(Montant) FROM transactions WHERE subcategory_id = o.id_subcategory AND id_type = 3 AND id_utilisateur = :uid), 0) - COALESCE((SELECT SUM(Montant) FROM transactions WHERE goal_id = o.id_objectif AND id_type = 1 AND id_utilisateur = :uid), 0)) AS montant_depose,
-      (o.montant - (COALESCE((SELECT SUM(Montant) FROM transactions WHERE subcategory_id = o.id_subcategory AND id_type = 3 AND id_utilisateur = :uid), 0) - COALESCE((SELECT SUM(Montant) FROM transactions WHERE goal_id = o.id_objectif AND id_type = 1 AND id_utilisateur = :uid), 0))) AS reste
+      COALESCE((SELECT SUM(Montant) FROM transactions WHERE subcategory_id = o.id_subcategory AND id_type = 3 AND Montant > 0 AND id_utilisateur = ?), 0) AS total_deposits,
+      COALESCE(-(SELECT SUM(Montant) FROM transactions WHERE subcategory_id = o.id_subcategory AND id_type = 3 AND Montant < 0 AND id_utilisateur = ?), 0) AS total_withdrawn,
+      (COALESCE((SELECT SUM(Montant) FROM transactions WHERE subcategory_id = o.id_subcategory AND id_type = 3 AND id_utilisateur = ?), 0)) AS montant_depose,
+      (o.montant - COALESCE((SELECT SUM(Montant) FROM transactions WHERE subcategory_id = o.id_subcategory AND id_type = 3 AND id_utilisateur = ?), 0)) AS reste
     FROM objectif_crees o
     LEFT JOIN subcategories s ON s.id_subcategory = o.id_subcategory
-    WHERE o.user_id = :uid
+    WHERE o.user_id = ?
     ORDER BY o.date_depot DESC
   ";
 
   $stmt = $pdo->prepare($sql);
-  $stmt->execute([':uid' => $uid]);
+  $stmt->execute([$uid, $uid, $uid, $uid, $uid]);
   $goals = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
   echo json_encode(['success' => true, 'goals' => $goals]);

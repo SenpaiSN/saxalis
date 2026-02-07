@@ -3,7 +3,7 @@ import { isSavingsTx } from './statsUtils';
 import Filters from './Filters';
 import * as api from '../../services/api';
 
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Wallet, MinusCircle, Repeat } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Wallet, MinusCircle, Repeat, LineChart, BarChart3 } from 'lucide-react';
 import StatsCardsDesign from './StatsCardsDesign';
 import { Transaction } from '../App';
 import { usePreferences } from '../contexts/PreferencesContext';
@@ -11,7 +11,7 @@ import { aggregateMonthlyEvolution, aggregateCategoryBreakdown, computeMonthlySa
 import { computeTotals } from './statsUtils';
 import formatCurrency from '../../lib/formatCurrency';
 import { matchesSearch } from './searchUtils';
-import EvolutionChart from './charts/EvolutionChart';
+import ComparisonChart from './charts/ComparisonChart';
 import CategoryChart from './charts/CategoryChart';
 import SavingsChart from './charts/SavingsChart';
 import ChangeLabel from './ui/ChangeLabel';
@@ -104,6 +104,11 @@ export default function StatsModern({ transactions, recherche, setRecherche, ann
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [activeGoal, setActiveGoal] = useState<any>(null);
+
+  // Default values for current year/month
+  const now = new Date();
+  const defaultAnnee = String(now.getFullYear());
+  const defaultMois = String(now.getMonth() + 1);
 
   // Apply filters (same rules as TransactionsModern)
   const transactionsFiltres = transactions.filter(t => {
@@ -314,8 +319,27 @@ export default function StatsModern({ transactions, recherche, setRecherche, ann
     },
   ];
 
+  // For Comparaison revenus vs dépenses: apply current year as default filter if not explicitly set
+  const transactionsEvolution = transactions.filter(t => {
+    const matchRecherche = matchesSearch(t, recherche);
+    const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
+    const matchType = filtreType === 'tous' || txCode === filtreType;
+    const txDate = new Date(t.date);
+    // For Evolution chart: use current year by default, but respect explicit filter selections
+    const effectiveAnnee = annee !== 'Tous' ? annee : defaultAnnee;
+    const matchAnnee = String(txDate.getFullYear()) === effectiveAnnee;
+    // For evolution chart: only apply month filter if explicitly selected; otherwise show all months of the year
+    const matchMois = mois === 'Tous' || (txDate.getMonth() + 1) === Number(mois);
+    const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
+    const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
+    const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
+    const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
+    return matchRecherche && matchType && matchAnnee && matchMois && matchCategorie && matchSous;
+  });
+  const effectiveAnneeEvolution = annee !== 'Tous' ? annee : defaultAnnee;
+
   // Données graphique évolution (extraites via utilitaire)
-  const evolutionData = aggregateMonthlyEvolution(transactionsFiltres, locale);
+  const evolutionData = aggregateMonthlyEvolution(transactionsEvolution, locale);
   // determine X ticks to avoid label crowding (show ~6 ticks)
   const xTickStep = Math.max(1, Math.ceil(evolutionData.length / 6));
   evolutionData.forEach((d, i) => { (d as any).index = i; });
@@ -480,22 +504,31 @@ export default function StatsModern({ transactions, recherche, setRecherche, ann
 
         {/* Goals summary widget */}
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="col-span-1 lg:col-span-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <h4 className="text-sm font-semibold">Objectifs</h4>
-                <p className="text-xs text-gray-500">Vue d'ensemble</p>
+          <div tabindex="0" className="col-span-1 lg:col-span-1 group relative bg-white rounded-2xl md:rounded-3xl shadow-lg border border-gray-200 p-5 md:p-6 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-blue-50 opacity-0 group-hover:opacity-100 group-active:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute -right-3 -bottom-3 w-16 h-16 md:w-24 md:h-24 bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-500 rounded-full opacity-0 group-hover:opacity-10 group-active:opacity-10 group-focus-within:opacity-10 transition-opacity duration-300"></div>
+            
+            <div className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h4 className="text-sm font-semibold">Objectifs en cours</h4>
+                  <p className="text-xs text-gray-500">Vue d'ensemble</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">Atteints</div>
+                  <div className="text-xl font-bold">{goalsReachedCount}</div>
+                </div>
               </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500">Atteints</div>
-                <div className="text-xl font-bold">{goalsReachedCount}</div>
-              </div>
+              <p className="mt-3 text-sm font-semibold text-gray-700">Total épargné sur objectifs: <strong>{formatCurrency(totalSavedGoals)}</strong></p>
             </div>
-            <p className="mt-3 text-sm font-semibold text-gray-700">Total épargné sur objectifs: <strong>{formatCurrency(totalSavedGoals)}</strong></p>
           </div>
 
-          <div className="col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h4 className="font-semibold mb-3">Projections par objectif</h4>
+          <div tabindex="0" className="col-span-2 group relative bg-white rounded-2xl md:rounded-3xl shadow-lg border border-gray-200 p-5 md:p-6 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-50 to-purple-50 opacity-0 group-hover:opacity-100 group-active:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute -right-3 -bottom-3 w-16 h-16 md:w-24 md:h-24 bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 rounded-full opacity-0 group-hover:opacity-10 group-active:opacity-10 group-focus-within:opacity-10 transition-opacity duration-300"></div>
+            
+            <div className="relative">
+              <h4 className="font-semibold mb-3">Objectifs atteints</h4>
             <div className="space-y-3">
               {goalsLoading && <div>Chargement…</div>}
               {goalsError && <div className="text-sm text-red-600">{goalsError}</div>}
@@ -541,6 +574,7 @@ export default function StatsModern({ transactions, recherche, setRecherche, ann
                 );
               })}
             </div>
+            </div>
           </div>
         </div>
 
@@ -552,57 +586,60 @@ export default function StatsModern({ transactions, recherche, setRecherche, ann
       {/* Graphiques principaux */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Évolution mensuelle */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-sm">Évolution mensuelle</h3>
-            <div className="flex gap-3 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--color-revenu)' }}></div>
-                <span className="text-gray-600">Revenus</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--color-depense)' }}></div>
-                <span className="text-gray-600">Dépenses</span>
-              </div>
+        <div tabindex="0" className="group relative bg-white rounded-2xl md:rounded-3xl shadow-lg border border-gray-200 p-5 md:p-6 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"> opacity-0 group-hover:opacity-100 group-active:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300"></div>
+          <div className="absolute -right-3 -bottom-3 w-16 h-16 md:w-24 md:h-24 bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 rounded-full opacity-0 group-hover:opacity-10 group-active:opacity-10 group-focus-within:opacity-10 transition-opacity duration-300"></div>
+          
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-sm">Comparaison revenus vs dépenses</h3>
+              <span className="text-sm font-bold text-gray-400">{effectiveAnneeEvolution}</span>
             </div>
-          </div>
 
-          <div className="h-48">
-            <EvolutionChart data={evolutionData} formatCurrency={formatCurrency} chartsReady={chartsReady} locale={locale} />
+            <div className="h-64">
+              <ComparisonChart data={evolutionData} formatCurrency={formatCurrency} chartsReady={chartsReady} locale={locale} annee={effectiveAnneeEvolution} />
+            </div>
           </div>
         </div>
 
         {/* Répartition par catégorie (Histogramme) */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-bold text-lg mb-6">Répartition des dépenses</h3>
-          <div className="h-48">
-            <CategoryChart data={categoriesData} formatCurrency={formatCurrency} colors={COLORS} />
+        <div tabindex="0" className="group relative bg-white rounded-2xl md:rounded-3xl shadow-lg border border-gray-200 p-5 md:p-6 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"> opacity-0 group-hover:opacity-100 group-active:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300"></div>
+          <div className="absolute -right-3 -bottom-3 w-16 h-16 md:w-24 md:h-24 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 rounded-full opacity-0 group-hover:opacity-10 group-active:opacity-10 group-focus-within:opacity-10 transition-opacity duration-300"></div>
+          
+          <div className="relative">
+            <h3 className="font-bold text-lg mb-6">Répartition des dépenses</h3>
+            <div className="h-48">
+              <CategoryChart data={categoriesData} formatCurrency={formatCurrency} colors={COLORS} />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Évolution des économies cumulées (réel + provisions 3 mois) */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-sm">Évolution des économies cumulées</h3>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">Cumul réel</span>
-              <span className="px-3 py-1 rounded-full text-sm font-medium" style={{ backgroundColor: lastRealValue >= 0 ? 'var(--card-bg-revenu)' : 'var(--card-bg-depense)', color: lastRealValue >= 0 ? 'var(--color-revenu-foreground)' : 'var(--color-depense-foreground)' }}>
-                {formatCurrency(lastRealValue)}
-              </span>
-            </div>
+      <div tabindex="0" className="group relative bg-white rounded-2xl md:rounded-3xl shadow-lg border border-gray-200 p-5 md:p-6 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"> opacity-0 group-hover:opacity-100 group-active:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300"></div>
+        <div className="absolute -right-3 -bottom-3 w-16 h-16 md:w-24 md:h-24 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500 rounded-full opacity-0 group-hover:opacity-10 group-active:opacity-10 group-focus-within:opacity-10 transition-opacity duration-300"></div>
+        
+        <div className="relative">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-sm">Évolution des économies cumulées</h3>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Cumul réel</span>
+                <span className="px-3 py-1 rounded-full text-sm font-medium" style={{ backgroundColor: lastRealValue >= 0 ? 'var(--card-bg-revenu)' : 'var(--card-bg-depense)', color: lastRealValue >= 0 ? 'var(--color-revenu-foreground)' : 'var(--color-depense-foreground)' }}>
+                  {formatCurrency(lastRealValue)}
+                </span>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">Provisions (3 mois)</span>
-              <span className="px-3 py-1 rounded-full text-sm font-medium" style={{ backgroundColor: 'var(--card-bg-epargne)', color: 'var(--color-epargne-foreground)' }}>
-                {formatCurrency(projSumValue)}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Provisions (3 mois)</span>
+                <span className="px-3 py-1 rounded-full text-sm font-medium" style={{ backgroundColor: 'var(--card-bg-epargne)', color: 'var(--color-epargne-foreground)' }}>
+                  {formatCurrency(projSumValue)}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="h-56">
-          <SavingsChart data={savingsChartData} formatCurrency={formatCurrency} monthlySavings={displayedMonthlySavings} chartsReady={chartsReady} locale={locale} />
+          <div className="h-56">
+            <SavingsChart data={savingsChartData} formatCurrency={formatCurrency} monthlySavings={displayedMonthlySavings} chartsReady={chartsReady} locale={locale} />
+          </div>
         </div>
       </div>
 

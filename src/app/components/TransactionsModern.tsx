@@ -63,7 +63,8 @@ export default function TransactionsModern({ transactions,
       const effectiveMois = mois;
 
       const matchAnnee = effectiveAnnee === 'Tous' || String(txDate.getFullYear()) === effectiveAnnee;
-      const matchMois = effectiveMois === 'Tous' || (effectiveMois !== 'Tous' && (txDate.getMonth() + 1) === Number(effectiveMois));
+      const txMonth = String(txDate.getMonth() + 1).padStart(2, '0');
+      const matchMois = effectiveMois === 'Tous' || txMonth === effectiveMois;
       const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
       const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
       const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
@@ -121,44 +122,193 @@ export default function TransactionsModern({ transactions,
   // Calculer les totaux (séparés Réel / Prévisionnel)
   const totals = computeTotals(transactionsFiltrees, types);
 
-  // Build comparison labels vs previous year for the small stats
-  const prevYear = new Date().getFullYear() - 1;
+  // For Revenus/Dépenses cards: apply current month/year as default filter if not explicitly set
+  const now = new Date();
+  const defaultAnnee = String(now.getFullYear());
+  const defaultMois = String(now.getMonth() + 1);
+  
+  // For current month display: include revenus/dépenses until end of month (including forecasts)
+  const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  
+  const transactionsRevenusDepenses = transactions.filter(t => {
+    const matchRecherche = matchesSearch(t, recherche);
+    const txCode = t.type === 'dépense' ? 'expense' : (t.type === 'revenu' ? 'income' : (t.type as any));
+    const matchType = filtreType === 'tous' || txCode === filtreType;
+    const txDate = new Date(t.date);
+    // For Revenus/Dépenses: use current month/year by default, but respect explicit filter selections
+    const effectiveAnnee = annee !== 'Tous' ? annee : defaultAnnee;
+    const effectiveMois = mois !== 'Tous' ? mois : defaultMois;
+    const matchAnnee = String(txDate.getFullYear()) === effectiveAnnee;
+    const matchMois = (txDate.getMonth() + 1) === Number(effectiveMois);
+    
+    // For current month: include transactions up to end of month (even if in future)
+    // For other months: keep strict date filtering
+    let matchDate = true;
+    if (effectiveAnnee === defaultAnnee && effectiveMois === defaultMois) {
+      // Current month: include everything until end of month
+      matchDate = txDate <= endOfCurrentMonth;
+    } else {
+      // Other months: use default behavior (only past transactions)
+      matchDate = true; // Already filtered by year/month above
+    }
+    
+    const matchCategorie = categorie === 'Toutes' || t.categorie === categorie;
+    const subName = (t as any).subcategoryName ?? (t as any).subCategory ?? '';
+    const subId = (t as any).subcategoryId ?? (t as any).subCategoryId ?? (t as any).id_subcategory ?? null;
+    const matchSous = sousCategorie === 'Toutes' || subName === sousCategorie || (subId !== null && String(subId) === String(sousCategorie));
+    const overall = matchRecherche && matchType && matchAnnee && matchMois && matchDate && matchCategorie && matchSous;
+    return overall;
+  });
+  const totalsRevenusDepenses = computeTotals(transactionsRevenusDepenses, types);
+
+  // Calculate previous month (always month-over-month comparison)
+  const refDate = (() => {
+    const now = new Date();
+    let y = now.getFullYear();
+    let m = now.getMonth() + 1;
+    const effectiveAnnee = annee;
+    const effectiveMois = mois;
+    if (effectiveAnnee && effectiveAnnee !== 'Tous') y = Number(effectiveAnnee);
+    if (effectiveMois && effectiveMois !== 'Tous') m = Number(effectiveMois);
+    return new Date(y, m - 1, 1);
+  })();
+
+  const prevDate = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
+  const prevLabel = prevDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+  const prevLabelCapitalized = prevLabel.replace(/\p{L}/u, c => c.toUpperCase());
+
   const prevRevenus = transactionsFiltrees
-    .filter(t => new Date(t.date).getFullYear() === prevYear && (t.type === 'revenu'))
+    .filter(t => {
+      const txDate = new Date(t.date);
+      const matchYear = String(txDate.getFullYear()) === String(prevDate.getFullYear());
+      const matchMonth = txDate.getMonth() === prevDate.getMonth();
+      return matchYear && matchMonth && (t.type === 'revenu');
+    })
     .reduce((s, t) => s + (t.montant ?? 0), 0);
+
   const prevDepenses = transactionsFiltrees
-    .filter(t => new Date(t.date).getFullYear() === prevYear && (t.type === 'dépense'))
+    .filter(t => {
+      const txDate = new Date(t.date);
+      const matchYear = String(txDate.getFullYear()) === String(prevDate.getFullYear());
+      const matchMonth = txDate.getMonth() === prevDate.getMonth();
+      return matchYear && matchMonth && (t.type === 'dépense');
+    })
     .reduce((s, t) => s + Math.abs(t.montant), 0);
 
   const computeChangeLabel = (current: number, previous: number) => {
-    if (previous === 0) return `— par rapport à ${prevYear}`;
+    if (previous === 0) return `— par rapport à ${prevLabelCapitalized}`;
     const pct = (current - previous) / Math.abs(previous) * 100;
     const sign = pct >= 0 ? '+' : '-';
-    return `${sign}${Math.abs(pct).toFixed(2)}% par rapport à ${prevYear}`;
+    return `${sign}${Math.abs(pct).toFixed(2)}% par rapport à ${prevLabelCapitalized}`;
   };
 
-  const revenusChangeLabel = computeChangeLabel(totals.revenus.real, prevRevenus);
-  const depensesChangeLabel = computeChangeLabel(totals.depenses.real, prevDepenses);
-  const soldeReal = totals.revenus.real - totals.depenses.real;
-  const prevSolde = prevRevenus - prevDepenses;
+  // For current month: include both real and forecast revenus (to show anticipated income)
+  // For other months: show only real transactions
+  const effectiveAnnee = annee !== 'Tous' ? annee : defaultAnnee;
+  const effectiveMois = mois !== 'Tous' ? mois : defaultMois;
+  const isCurrentMonthDisplayed = effectiveAnnee === defaultAnnee && effectiveMois === defaultMois;
+  const revenusDisplayed = isCurrentMonthDisplayed 
+    ? (totalsRevenusDepenses.revenus.real + totalsRevenusDepenses.revenus.forecast)
+    : totalsRevenusDepenses.revenus.real;
+
+  const revenusChangeLabel = computeChangeLabel(revenusDisplayed, prevRevenus);
+  const depensesChangeLabel = computeChangeLabel(totalsRevenusDepenses.depenses.real, prevDepenses);
+  
+  // Calculate long-term savings (Natixis) to exclude from "Économies réalisées"
+  const epargneLongTermeTotal = transactionsRevenusDepenses
+    .filter(t => {
+      const type = String(t.type || '').toLowerCase();
+      const cat = String(t.categorie || '').toLowerCase();
+      return (type === 'epargne' || type === 'épargne' || type === 'savings') && cat.includes('natixis');
+    })
+    .reduce((sum, t) => sum + (Number(t.montant) || 0), 0);
+  
+  const totalEpargneRealLiquid = totalsRevenusDepenses.epargne.real - epargneLongTermeTotal;
+  const soldeReal = totalsRevenusDepenses.revenus.real - totalsRevenusDepenses.depenses.real - totalEpargneRealLiquid;
+  
+  // Previous month savings (liquid only, excluding Natixis)
+  const prevEpargne = transactionsFiltrees
+    .filter(t => {
+      const txDate = new Date(t.date);
+      const matchYear = String(txDate.getFullYear()) === String(prevDate.getFullYear());
+      const matchMonth = txDate.getMonth() === prevDate.getMonth();
+      const type = String(t.type || '').toLowerCase();
+      const cat = String(t.categorie || '').toLowerCase();
+      return matchYear && matchMonth && (type === 'epargne' || type === 'épargne' || type === 'savings') && !cat.includes('natixis');
+    })
+    .reduce((s, t) => s + (t.montant ?? 0), 0);
+  
+  const prevSolde = prevRevenus - prevDepenses - prevEpargne;
   const soldeChangeLabel = computeChangeLabel(soldeReal, prevSolde);
+
+  // Upcoming transactions within the current month (forecast window)
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+
+  // Use global month/year filters for the upcoming transactions (defaults to current month when not set)
+  const selectedYear = (annee && annee !== 'Tous') ? Number(annee) : endOfToday.getFullYear();
+  const selectedMonthIndex = (mois && mois !== 'Tous') ? (Number(mois) - 1) : endOfToday.getMonth();
+  const startOfSelectedMonth = new Date(selectedYear, selectedMonthIndex, 1);
+  startOfSelectedMonth.setHours(0, 0, 0, 0);
+  const endOfSelectedMonth = new Date(selectedYear, selectedMonthIndex + 1, 0);
+  endOfSelectedMonth.setHours(23, 59, 59, 999);
+
+  // If the selected month is in the past compared to current month, don't show upcoming transactions
+  const selectedIsBeforeCurrent = (selectedYear < endOfToday.getFullYear()) || (selectedYear === endOfToday.getFullYear() && selectedMonthIndex < endOfToday.getMonth());
+
+  const upcomingTransactions = selectedIsBeforeCurrent ? [] : transactionsFiltrees
+    .filter(t => {
+      if (!t || !t.date) return false;
+      const d = new Date(t.date);
+      // only show future transactions falling within the selected month
+      return d > endOfToday && d >= startOfSelectedMonth && d <= endOfSelectedMonth;
+    })
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // Totals (split revenue / expenses)
+  const upcomingExpensesTotal = upcomingTransactions.filter(t => t.type === 'dépense').reduce((s, t) => s + Math.abs(t.montant ?? 0), 0);
+
+  // Forecast at end of month = current real balance minus upcoming expenses in selected month
+  const previsionFinDeMois = soldeReal - upcomingExpensesTotal;
+
+  // Calculate revenues by category for details (exclude Salaire)
+  const revenuesByCategory = transactionsRevenusDepenses
+    .filter(t => t.type === 'revenu' && t.subcategoryName !== 'Salaire')
+    .reduce((acc: Record<string, number>, t) => {
+      // Use subcategory name if available, otherwise use category
+      const detail = t.subcategoryName || t.categorie || 'Autre';
+      acc[detail] = (acc[detail] ?? 0) + (t.montant ?? 0);
+      return acc;
+    }, {});
+
+  // Build revenue details string (top 3 categories, sorted by amount, excluding 0€ amounts)
+  const revenueDetails = Object.entries(revenuesByCategory)
+    .filter(([, amount]) => amount > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([detail, amount]) => `${formatCurrency(amount)} de ${detail}`)
+    .join(', ');
+
+  const revenuesComparison = revenueDetails ? `dont ${revenueDetails}` : '';
 
   const statsItems = [
     {
-      title: 'Solde total',
+      title: 'Économies réalisées',
+      subtitle: '(hors épargne & placements)',
       value: formatCurrency(soldeReal),
-      change: soldeChangeLabel.split(' ')[0] === '—' ? undefined : soldeChangeLabel.split(' ')[0],
-      comparison: `— par rapport à ${prevYear}`,
+      change: soldeChangeLabel,
+      comparison: `Prévision en fin de mois: ${formatCurrency(previsionFinDeMois)}`,
       trend: (soldeReal >= prevSolde) ? 'up' : 'down',
       icon: Wallet,
       gradient: 'from-blue-500 via-blue-600 to-indigo-600',
       bgGradient: 'from-blue-50 to-indigo-50',
+      valueColor: soldeReal > 0 ? 'green' : 'red',
     },
     {
       title: 'Revenus',
-      value: formatCurrency(totals.revenus.real),
-      change: revenusChangeLabel.split(' ')[0] === '—' ? undefined : revenusChangeLabel.split(' ')[0],
-      comparison: `— par rapport à ${prevYear}`,
+      value: formatCurrency(revenusDisplayed),
+      change: revenusChangeLabel,
+      comparison: revenuesComparison,
       trend: 'up',
       icon: ArrowUpRight,
       gradient: 'from-emerald-500 via-green-500 to-teal-500',
@@ -166,9 +316,9 @@ export default function TransactionsModern({ transactions,
     },
     {
       title: 'Dépenses',
-      value: formatCurrency(totals.depenses.real),
-      change: depensesChangeLabel.split(' ')[0] === '—' ? undefined : depensesChangeLabel.split(' ')[0],
-      comparison: `— par rapport à ${prevYear}`,
+      value: formatCurrency(totalsRevenusDepenses.depenses.real),
+      change: depensesChangeLabel,
+      comparison: '',
       trend: 'down',
       icon: ArrowDownRight,
       gradient: 'from-rose-500 via-pink-500 to-red-500',
@@ -256,17 +406,6 @@ export default function TransactionsModern({ transactions,
 
       {/* Liste des transactions */}
       <div className="space-y-6">
-        {isFuturePeriodSelected && (
-          <div className="rounded-2xl p-3 flex items-center justify-between" style={{ backgroundColor: '#fff7ed', border: '1px solid #fde3c6' }}>
-            <div className="text-sm text-orange-800">Affichage incluant les transactions <strong>futures</strong> pour la période sélectionnée.</div>
-            <div>
-              <button onClick={() => setShowForecasts(!showForecasts)} className="px-3 py-1 rounded-full border bg-white text-sm shadow-sm">
-                {showForecasts ? 'Masquer les prévisions' : 'Afficher les prévisions'}
-              </button>
-            </div>
-          </div>
-        )}
-
         {Object.entries(transactionsParDate).map(([date, transactionsJour]) => (
           <div key={date} className="rounded-2xl p-6" style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--card-shadow)', border: '1px solid var(--border)', borderRadius: 'var(--card-border-radius)' }}>
             <h3 className="font-semibold text-gray-700 mb-4 capitalize">{date}</h3>

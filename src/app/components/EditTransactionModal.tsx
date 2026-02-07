@@ -4,6 +4,16 @@ import * as api from '../../services/api';
 import { usePreferences } from '../contexts/PreferencesContext';
 import { Transaction } from '../App';
 
+// Convertir une date UTC en heure Europe/Paris (HH:MM)
+function formatTimeToLocal(date: Date): string {
+  return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+}
+
+// Convertir une date en chaîne YYYY-MM-DD (Europe/Paris)
+function formatDateToLocal(date: Date): string {
+  return date.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' }).split('/').reverse().join('-');
+}
+
 interface Props {
   open: boolean;
   transaction: Transaction | null;
@@ -33,8 +43,8 @@ export default function EditTransactionModal({ open, transaction, onClose, onSav
     if (!transaction) return;
     try {
       const dt = new Date(transaction.date);
-      setEditDate(dt.toISOString().split('T')[0]);
-      setEditTime(dt.toISOString().slice(11,16));
+      setEditDate(formatDateToLocal(dt));
+      setEditTime(formatTimeToLocal(dt));
     } catch (e) {
       setEditDate(transaction.date);
       setEditTime('12:00');

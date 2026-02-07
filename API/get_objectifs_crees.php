@@ -15,6 +15,7 @@ try {
       s.name,
       o.montant AS montant_objectif,
       DATE(o.date_depot) AS date_creation,
+      o.date_cible,
       COALESCE(d.total_deposits, 0) AS total_deposits,
       COALESCE(w.total_withdrawn, 0) AS total_withdrawn,
       (COALESCE(d.total_deposits, 0) - COALESCE(w.total_withdrawn, 0)) AS total_collected,
@@ -26,15 +27,15 @@ try {
     LEFT JOIN (
       SELECT subcategory_id, id_utilisateur, SUM(Montant) AS total_deposits, COUNT(id_transaction) AS nb_deposits
       FROM transactions
-      WHERE id_type = 3
+      WHERE id_type = 3 AND Montant > 0
       GROUP BY subcategory_id, id_utilisateur
     ) d ON d.subcategory_id = o.id_subcategory AND d.id_utilisateur = o.user_id
     LEFT JOIN (
-      SELECT goal_id, id_utilisateur, SUM(Montant) AS total_withdrawn, COUNT(id_transaction) AS nb_withdrawals
+      SELECT subcategory_id, id_utilisateur, -SUM(Montant) AS total_withdrawn, COUNT(id_transaction) AS nb_withdrawals
       FROM transactions
-      WHERE  id_type = 2 and subcategory_id=360
-      GROUP BY goal_id, id_utilisateur
-    ) w ON w.goal_id = o.id_objectif AND w.id_utilisateur = o.user_id
+      WHERE id_type = 3 AND Montant < 0
+      GROUP BY subcategory_id, id_utilisateur
+    ) w ON w.subcategory_id = o.id_subcategory AND w.id_utilisateur = o.user_id
     WHERE o.user_id = :uid
     ORDER BY o.date_depot DESC
   ";
