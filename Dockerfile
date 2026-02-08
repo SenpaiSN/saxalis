@@ -15,12 +15,19 @@ RUN apk add --no-cache \
 FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm install --legacy-peer-deps
+
+# Copy only package.json (ignore package-lock.json)
+COPY package.json ./
+
+# Install dependencies with npm - ignore lock file to avoid conflicts
+RUN npm install --no-prefer-offline --no-audit --legacy-peer-deps 2>&1 && npm cache clean --force
+
 COPY vite.config.ts tailwind.config.js postcss.config.mjs ./
 COPY src/ ./src/
 COPY public/ ./public/
-RUN npm run build
+
+# Build production bundle
+RUN npm run build 2>&1
 
 # Final stage
 FROM php-base
