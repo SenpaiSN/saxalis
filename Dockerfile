@@ -16,7 +16,7 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install --legacy-peer-deps
 COPY vite.config.ts tailwind.config.js postcss.config.mjs ./
 COPY src/ ./src/
 COPY public/ ./public/
