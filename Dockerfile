@@ -22,10 +22,16 @@ COPY package.json ./
 # Install dependencies with npm - ignore lock file to avoid conflicts
 RUN npm install --no-prefer-offline --no-audit --legacy-peer-deps 2>&1 && npm cache clean --force
 
-# Copy config files and source
-COPY index.html vite.config.ts tailwind.config.js postcss.config.mjs ./
+# Copy config files and source - VERIFY FILES EXIST
+COPY index.html ./
+RUN test -f /app/index.html || (echo "ERROR: index.html not found!" && exit 1)
+
+COPY vite.config.ts tailwind.config.js postcss.config.mjs ./
 COPY src/ ./src/
 COPY public/ ./public/
+
+# List files for debugging
+RUN ls -la /app/
 
 # Build production bundle
 RUN npm run build 2>&1
