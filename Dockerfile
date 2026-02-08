@@ -51,8 +51,9 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 EXPOSE 8080
 
-# Start script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Create necessary directories
+RUN mkdir -p /app/API/logs /app/uploads /run/nginx && \
+    chmod 755 /app/API/logs /app/uploads /run/nginx
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Start PHP-FPM and Nginx
+CMD php-fpm -D && nginx -g "daemon off;"
