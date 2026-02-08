@@ -22,16 +22,34 @@ COPY package.json ./
 # Install dependencies with npm - ignore lock file to avoid conflicts
 RUN npm install --no-prefer-offline --no-audit --legacy-peer-deps 2>&1 && npm cache clean --force
 
-# Copy config files and source - VERIFY FILES EXIST
-COPY index.html ./
-RUN test -f /app/index.html || (echo "ERROR: index.html not found!" && exit 1)
-
+# Copy vite config BEFORE index.html to trigger fresh layer
 COPY vite.config.ts tailwind.config.js postcss.config.mjs ./
+
+# Generate index.html inline (no COPY dependency)
+RUN cat > index.html << 'EOF'
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SaXalis</title>
+    <link rel="icon" href="/images/favicon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+EOF
+
+# Copy source code (not index.html - it was recreated above)
 COPY src/ ./src/
 COPY public/ ./public/
 
-# List files for debugging
-RUN ls -la /app/
+# Verify index.html was created
+RUN test -f /app/index.html && ls -la /app/index.html
 
 # Build production bundle
 RUN npm run build 2>&1
