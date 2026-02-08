@@ -22,7 +22,8 @@ COPY package.json ./
 # Install dependencies with npm - ignore lock file to avoid conflicts
 RUN npm install --no-prefer-offline --no-audit --legacy-peer-deps 2>&1 && npm cache clean --force
 
-COPY vite.config.ts tailwind.config.js postcss.config.mjs ./
+# Copy config files and source
+COPY index.html vite.config.ts tailwind.config.js postcss.config.mjs ./
 COPY src/ ./src/
 COPY public/ ./public/
 
